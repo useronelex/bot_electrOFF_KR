@@ -6,7 +6,7 @@ import os
 import random
 import time
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date
+from datetime import date, timedelta
 
 import httpx
 from telegram import Bot, BotCommand, InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
@@ -29,6 +29,7 @@ MINIAPP_URL = os.environ.get("MINIAPP_URL", "")  # https://t.me/<бот>/<наз
 
 _status: dict = {"last_ok": None, "last_error": None}
 _api: dict = {"data": None}
+_times: graph.Times = {}
 _tasks: set[asyncio.Task] = set()
 
 
@@ -188,18 +189,21 @@ def current_text() -> str:
             shown = {q: graph.upcoming(qs[q], d, today, now_min) for q in graph.QUEUES if q in qs}
             if shown:
                 parts.append(graph.fmt_day(d, shown, "📋 Поточний графік на"))
-    return "\n\n".join(parts) or "Графіка ще немає — спробуйте за хвилину."
+    text = "\n\n".join(parts) or "Графіка ще немає — спробуйте за хвилину."
+    return f"{text}\n\n{graph.notice}" if graph.notice else text
 
 
 # ──────────────────────────────────────────
 # МОНІТОРИНГ
 # ──────────────────────────────────────────
-def _publish(current: graph.Schedule, times: graph.Times, checked_at: float | None) -> None:
-    _api["data"] = graph.build_api(current, times, graph.now()[0], checked_at, POLL_INTERVAL)
+def _publish(checked_at: float | None) -> None:
+    """Для сторінки беремо збережений стан, а не лише останню відповідь джерела."""
+    current = {date.fromisoformat(k): v for k, v in state["schedules"].items()}
+    _api["data"] = graph.build_api(current, _times, graph.now()[0], checked_at, POLL_INTERVAL)
 
 
 async def monitor(bot: Bot) -> None:
-    _publish({date.fromisoformat(k): v for k, v in state["schedules"].items()}, {}, None)
+    _publish(None)
     last = None
     fails, fail_since, alerted = 0, None, False
     logger.info(f"Моніторинг: {graph.SOURCE} | черги={graph.QUEUES} | підписників={len(state['users'])}")
@@ -220,7 +224,8 @@ async def monitor(bot: Bot) -> None:
                          else min(POLL_INTERVAL * 2 ** min(fails, 6), 120))
                 logger.warning(f"Помилка опитування ({fails}): {e}")
             else:
-                _publish(current, times, time.time())
+                for d, t in times.items():
+                    _times.setdefault(d, {}).update(t)
                 _status["last_ok"] = time.time()
                 if fails:
                     logger.info(f"Джерело знову доступне після {fails} помилок")
@@ -234,6 +239,7 @@ async def monitor(bot: Bot) -> None:
                     await check_changes(bot, current, today, now_min)
                     last = current
                 await send_alerts(bot, today, now_min)
+                _publish(_status["last_ok"])
             except asyncio.CancelledError:
                 raise
             except Exception:
@@ -298,6 +304,24 @@ async def cmd_web(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                                        reply_markup=markup)
 
 
+async def cmd_set(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Адмін: ручний графік, якщо джерело його не віддає. /set [завтра] 05:00-09:00, 15:30-22:00 | /set нема"""
+    chat = update.effective_chat
+    if not chat or chat.id != ADMIN_USER_ID:
+        return
+    text = " ".join(context.args).lower()
+    ivs = graph.parse_intervals(text)
+    if not ivs and "нема" not in text:
+        await context.bot.send_message(chat.id, "Приклад: /set 05:00-09:00, 15:30-22:00\n/set завтра нема")
+        return
+    today, _ = graph.now()
+    d = today + timedelta(days=text.startswith("завтра"))
+    state["schedules"].setdefault(d.isoformat(), {})[graph.QUEUES[0]] = ivs
+    _save()
+    _publish(_status["last_ok"])
+    await context.bot.send_message(chat.id, f"✅ {d.isoformat()}: {graph.fmt_intervals(ivs)}")
+
+
 async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
     err = context.error
     if isinstance(err, (NetworkError, Forbidden)):  # BadRequest входить у NetworkError
@@ -313,7 +337,7 @@ def create_application() -> Application:
     if not BOT_TOKEN:
         raise ValueError("BOT_TOKEN не встановлено!")
     app = Application.builder().token(BOT_TOKEN).build()
-    for name, fn in (("start", cmd_start), ("stop", cmd_stop), ("graph", cmd_graph), ("web", cmd_web)):
+    for name, fn in (("start", cmd_start), ("stop", cmd_stop), ("graph", cmd_graph), ("web", cmd_web), ("set", cmd_set)):
         app.add_handler(CommandHandler(name, fn))
     app.add_error_handler(on_error)
     return app
