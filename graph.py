@@ -1,5 +1,6 @@
 """Джерела графіків і розбір у єдиний формат: {дата: {черга: [[початок_хв, кінець_хв], ...]}}."""
 import json
+import logging
 import os
 import re
 from datetime import date, datetime, timedelta
@@ -8,6 +9,7 @@ from zoneinfo import ZoneInfo
 import httpx
 from bs4 import BeautifulSoup
 
+logger = logging.getLogger("graph")
 KYIV = ZoneInfo("Europe/Kyiv")
 QUEUES = tuple(q.strip() for q in os.environ.get("QUEUES", "4.2").split(",") if q.strip())
 SOURCE = os.environ.get("SOURCE", "yasno")  # yasno | dtek | telegram
@@ -55,10 +57,12 @@ def normalize(pairs: list[list[int]]) -> list[list[int]]:
 def parse_yasno(data: dict) -> tuple[Schedule, Times]:
     current: Schedule = {}
     times: Times = {}
+    seen = {}
     for q in QUEUES:
         info = data.get(q)
         if not isinstance(info, dict):
             continue
+        seen[q] = {k: (info[k].get("status") if isinstance(info.get(k), dict) else None) for k in ("today", "tomorrow")}
         try:
             updated = datetime.fromisoformat(info["updatedOn"]).timestamp()
         except (KeyError, ValueError):
@@ -71,8 +75,10 @@ def parse_yasno(data: dict) -> tuple[Schedule, Times]:
             pairs = [[x["start"], x["end"]] for x in day.get("slots", []) if x.get("type") == "Definite"]
             current.setdefault(d, {})[q] = normalize(pairs)
             times.setdefault(d, {})[q] = updated
-    if not current:
-        raise RuntimeError(f"YASNO: немає графіка для черг {QUEUES} (або його ще не опубліковано)")
+    if not seen:
+        raise RuntimeError(f"YASNO: у відповіді немає черг {QUEUES}, ключі: {list(data)[:8]}")
+    if not current:  # напр. EmergencyShutdowns: планового графіка немає — це не помилка
+        logger.info(f"YASNO: планового графіка немає, статуси: {seen}")
     return current, times
 
 
