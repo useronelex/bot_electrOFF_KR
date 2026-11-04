@@ -5,7 +5,13 @@ import re
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+
 import httpx
+
+import logging 
+logger = logging.getLogger("graph")
+
+
 from bs4 import BeautifulSoup
 
 KYIV = ZoneInfo("Europe/Kyiv")
@@ -85,9 +91,10 @@ def parse_dtek(html: str) -> tuple[Schedule, Times]:
         raise RuntimeError(f"ДТЕК: у даних немає черг {QUEUES}")
     return current, times
 
-
 async def _fetch_dtek(client: httpx.AsyncClient) -> tuple[Schedule, Times]:
     r = await client.get(DTEK_URL)
+    logger.warning(f"ДТЕК: HTTP {r.status_code}, {len(r.text)} байт, "
+                   f"Incapsula={'Incapsula' in r.text}, початок={r.text[:200]!r}")
     r.raise_for_status()
     return parse_dtek(r.text)
 
