@@ -5,18 +5,14 @@ import re
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
-
 import httpx
-
-import logging 
-logger = logging.getLogger("graph")
-
-
 from bs4 import BeautifulSoup
 
 KYIV = ZoneInfo("Europe/Kyiv")
 QUEUES = tuple(q.strip() for q in os.environ.get("QUEUES", "4.2").split(",") if q.strip())
-SOURCE = os.environ.get("SOURCE", "dtek")  # dtek | telegram
+SOURCE = os.environ.get("SOURCE", "yasno")  # yasno | dtek | telegram
+YASNO_URL = os.environ.get(
+    "YASNO_URL", "https://app.yasno.ua/api/blackout-service/public/shutdowns/regions/3/dsos/301/planned-outages")
 DTEK_URL = os.environ.get("DTEK_URL", "https://www.dtek-dnem.com.ua/ua/shutdowns")
 CHANNEL = os.environ.get("CHANNEL", "pat_cherkasyoblenergo")  # для SOURCE=telegram
 HEADERS = {
@@ -54,7 +50,40 @@ def normalize(pairs: list[list[int]]) -> list[list[int]]:
 
 
 # ──────────────────────────────────────────
-# ДЖЕРЕЛО 1: сайт ДТЕК (DisconSchedule.fact у HTML сторінки /shutdowns)
+# ДЖЕРЕЛО 1: YASNO API (дані ДТЕК Дніпровських електромереж, без захисту від ботів)
+# ──────────────────────────────────────────
+def parse_yasno(data: dict) -> tuple[Schedule, Times]:
+    current: Schedule = {}
+    times: Times = {}
+    for q in QUEUES:
+        info = data.get(q)
+        if not isinstance(info, dict):
+            continue
+        try:
+            updated = datetime.fromisoformat(info["updatedOn"]).timestamp()
+        except (KeyError, ValueError):
+            updated = None
+        for day in (info.get("today"), info.get("tomorrow")):
+            # інші статуси (WaitingForSchedule, EmergencyShutdowns...) — графіка на цю добу немає
+            if not day or day.get("status") not in ("ScheduleApplies", "NoOutages"):
+                continue
+            d = datetime.fromisoformat(day["date"]).date()
+            pairs = [[x["start"], x["end"]] for x in day.get("slots", []) if x.get("type") == "Definite"]
+            current.setdefault(d, {})[q] = normalize(pairs)
+            times.setdefault(d, {})[q] = updated
+    if not current:
+        raise RuntimeError(f"YASNO: немає графіка для черг {QUEUES} (або його ще не опубліковано)")
+    return current, times
+
+
+async def _fetch_yasno(client: httpx.AsyncClient) -> tuple[Schedule, Times]:
+    r = await client.get(YASNO_URL)
+    r.raise_for_status()
+    return parse_yasno(r.json())
+
+
+# ──────────────────────────────────────────
+# ДЖЕРЕЛО 2: сайт ДТЕК (на Render блокується Incapsula) (DisconSchedule.fact у HTML сторінки /shutdowns)
 # ──────────────────────────────────────────
 _DTEK_OFF = {"no": (0, 60), "first": (0, 30), "second": (30, 60)}  # yes/maybe/mfirst/msecond — світло є
 
@@ -91,16 +120,15 @@ def parse_dtek(html: str) -> tuple[Schedule, Times]:
         raise RuntimeError(f"ДТЕК: у даних немає черг {QUEUES}")
     return current, times
 
+
 async def _fetch_dtek(client: httpx.AsyncClient) -> tuple[Schedule, Times]:
     r = await client.get(DTEK_URL)
-    logger.warning(f"ДТЕК: HTTP {r.status_code}, {len(r.text)} байт, "
-                   f"Incapsula={'Incapsula' in r.text}, початок={r.text[:200]!r}")
     r.raise_for_status()
     return parse_dtek(r.text)
 
 
 # ──────────────────────────────────────────
-# ДЖЕРЕЛО 2: публічний Telegram-канал обленерго (t.me/s/<канал>)
+# ДЖЕРЕЛО 3: публічний Telegram-канал обленерго (t.me/s/<канал>)
 # ──────────────────────────────────────────
 MONTHS = {
     "січня": 1, "лютого": 2, "березня": 3, "квітня": 4, "травня": 5, "червня": 6,
@@ -183,7 +211,8 @@ def _msg_ts(wrap) -> float | None:
 
 
 async def fetch(client: httpx.AsyncClient) -> tuple[Schedule, Times]:
-    return await (_fetch_dtek if SOURCE == "dtek" else _fetch_telegram)(client)
+    fetcher = {"yasno": _fetch_yasno, "dtek": _fetch_dtek, "telegram": _fetch_telegram}[SOURCE]
+    return await fetcher(client)
 
 
 # ──────────────────────────────────────────
