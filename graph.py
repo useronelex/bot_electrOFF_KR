@@ -24,6 +24,7 @@ HEADERS = {
     "Cache-Control": "no-cache",
 }
 
+notice: str | None = None  # примітка від джерела (напр. YASNO не публікує плановий графік)
 Schedule = dict[date, dict[str, list[list[int]]]]
 Times = dict[date, dict[str, float | None]]
 
@@ -78,6 +79,9 @@ def parse_yasno(data: dict) -> tuple[Schedule, Times]:
     if not seen:
         raise RuntimeError(f"YASNO: у відповіді немає черг {QUEUES}, ключі: {list(data)[:8]}")
     if not current:  # напр. EmergencyShutdowns: планового графіка немає — це не помилка
+        global notice
+        status = next(iter(seen.values())).get("today")
+        notice = f"ℹ️ YASNO зараз не публікує плановий графік (статус: {status}). Показано останній відомий."
         logger.info(f"YASNO: планового графіка немає, статуси: {seen}")
     return current, times
 
@@ -160,6 +164,19 @@ def _parse_date(text: str, today: date) -> date | None:
     return None
 
 
+def parse_intervals(text: str) -> list[list[int]]:
+    """'05:00-09:00, 15:30-22:00' → [[300, 540], [930, 1320]]."""
+    out = []
+    for h1, m1, h2, m2 in _INTERVAL.findall(text):
+        if int(h1) > 24 or int(h2) > 24 or int(m1) > 59 or int(m2) > 59:
+            continue
+        start, end = int(h1) * 60 + int(m1), int(h2) * 60 + int(m2)
+        if end < start or (end == 0 and start > 0):  # через північ → на цю добу до 24:00
+            end = 1440
+        out.append([start, end])
+    return normalize(out)
+
+
 def parse_message(text: str, today: date) -> tuple[date, dict[str, list[list[int]]]] | None:
     day = _parse_date(text, today)
     if not day:
@@ -169,13 +186,8 @@ def parse_message(text: str, today: date) -> tuple[date, dict[str, list[list[int
         m = _QUEUE_LINE.match(line)
         if not m or m.group(1) not in QUEUES:
             continue
-        for h1, m1, h2, m2 in _INTERVAL.findall(m.group(2)):
-            start, end = int(h1) * 60 + int(m1), int(h2) * 60 + int(m2)
-            if int(h1) > 24 or int(h2) > 24 or int(m1) > 59 or int(m2) > 59:
-                continue
-            if end < start or (end == 0 and start > 0):  # через північ → на цю добу до 24:00
-                end = 1440
-            queues.setdefault(m.group(1), []).append([start, end])
+        if ivs := parse_intervals(m.group(2)):
+            queues.setdefault(m.group(1), []).extend(ivs)
     return (day, {q: normalize(p) for q, p in queues.items()}) if queues else None
 
 
@@ -217,6 +229,8 @@ def _msg_ts(wrap) -> float | None:
 
 
 async def fetch(client: httpx.AsyncClient) -> tuple[Schedule, Times]:
+    global notice
+    notice = None
     fetcher = {"yasno": _fetch_yasno, "dtek": _fetch_dtek, "telegram": _fetch_telegram}[SOURCE]
     return await fetcher(client)
 
