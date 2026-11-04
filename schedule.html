@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Графіки відключень · Черкасиобленерго</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>@property --b1{syntax:"<color>";inherits:true;initial-value:#7c8cff}@property --b2{syntax:"<color>";inherits:true;initial-value:#5eead4}@property --b3{syntax:"<color>";inherits:true;initial-value:#c4b5fd}@property --blob-op{syntax:"<number>";inherits:true;initial-value:.6}@property --glow-op{syntax:"<number>";inherits:true;initial-value:.5}:root{box-sizing:border-box;padding-top:env(safe-area-inset-top, 0px);padding-bottom:env(safe-area-inset-bottom, 0px);--blob-op: 0.6;--glass: rgba(255, 255, 255, 0.88);--glass-line: rgba(255, 255, 255, 0.9);--tile: rgba(255, 255, 255, 0.7);--line: rgba(20, 25, 63, 0.09);--card: #ffffff;--ink: #14193f;--tx: #343a52;--mut: #566075;--halo: #ffffff;--track: rgba(20, 25, 63, 0.08);--tick: #9aa3b8;--on: #10b981;--off: #ef4444;--onx: #047857;--offx: #b91c1c;--on1: #34d399;--on2: #22d3ee;--off1: #ff6b6b;--off2: #e5303a;--g1: #4338ca;--g2: #0f766e;--on-brand: #ffffff;--glow: rgba(79, 70, 229, 0.38);--glow-op: 0.5;--b1: #7c8cff;--b2: #5eead4;--b3: #c4b5fd;color-scheme:light;transition:--b1 1.2s ease,--b2 1.2s ease,--b3 1.2s ease,--blob-op .8s ease,--glow-op .8s ease}@media(prefers-color-scheme: dark){:root:not([data-theme=light]){--blob-op: 0.5;--glass: rgba(9, 20, 32, 0.86);--glass-line: rgba(255, 255, 255, 0.1);--tile: rgba(255, 255, 255, 0.05);--line: rgba(255, 255, 255, 0.1);--card: #0a1420;--ink: #f1f5f9;--tx: #cbd5e1;--mut: #9fb2bf;--halo: #0b1824;--track: rgba(255, 255, 255, 0.08);--tick: #4d6573;--on: #34d399;--off: #f87171;--onx: #6ee7b7;--offx: #fca5a5;--on1: #34d399;--on2: #22d3ee;--off1: #ff7b7b;--off2: #ef4444;--g1: #a5b4fc;--g2: #5eead4;--on-brand: #05131c;--glow: rgba(99, 102, 241, 0.45);--glow-op: 0.42;color-scheme:dark}}:root[data-theme=dark]{--blob-op: 0.5;--glass: rgba(9, 20, 32, 0.86);--glass-line: rgba(255, 255, 255, 0.1);--tile: rgba(255, 255, 255, 0.05);--line: rgba(255, 255, 255, 0.1);--card: #0a1420;--ink: #f1f5f9;--tx: #cbd5e1;--mut: #9fb2bf;--halo: #0b1824;--track: rgba(255, 255, 255, 0.08);--tick: #4d6573;--on: #34d399;--off: #f87171;--onx: #6ee7b7;--offx: #fca5a5;--on1: #34d399;--on2: #22d3ee;--off1: #ff7b7b;--off2: #ef4444;--g1: #a5b4fc;--g2: #5eead4;--on-brand: #05131c;--glow: rgba(99, 102, 241, 0.45);--glow-op: 0.42;--b1: #4f46e5;--b2: #0d9488;--b3: #7c3aed;color-scheme:dark}:root[data-state=on]{--b1: #34d399;--b2: #22d3ee;--b3: #a7f3d0;--glow: rgba(16,185,129,.4)}:root[data-state=off]{--b1: #fb923c;--b2: #fb7185;--b3: #fcd34d;--glow: rgba(249,115,22,.44)}:root[data-theme=dark][data-state=on]{--b1: #059669;--b2: #0891b2;--b3: #10b981;--glow: rgba(52,211,153,.38)}:root[data-theme=dark][data-state=off]{--b1: #ea580c;--b2: #e11d48;--b3: #d97706;--glow: rgba(251,146,60,.42)}html{scroll-padding-top:env(safe-area-inset-top, 0px);-webkit-text-size-adjust:100%;text-size-adjust:100%}*,*::before,*::after{box-sizing:border-box;-webkit-tap-highlight-color:rgba(0,0,0,0)}button{font-family:inherit;-webkit-appearance:none;appearance:none}svg{display:block}body{margin:0;display:flex;justify-content:center;padding:12px;color:var(--tx);font:400 14px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Inter",ui-sans-serif,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;font-variant-numeric:tabular-nums;-webkit-font-smoothing:antialiased}.mut{color:var(--mut)}html.tx *{transition:background-color .6s ease,color .6s ease,border-color .6s ease,box-shadow .6s ease,fill .6s ease,stroke .6s ease !important}html.vt,html.vt *{transition:none !important}::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}::view-transition-old(root){z-index:1}::view-transition-new(root){z-index:2}.bg{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;contain:strict}.bg::before,.bg::after{content:"";position:absolute;inset:0;z-index:-1;transition:opacity .9s ease}.bg::before{background:linear-gradient(160deg, #eef2ff 0%, #f7f0ff 48%, #eafbf6 100%)}.bg::after{background:linear-gradient(160deg, #050b18 0%, #08121f 50%, #04141a 100%);opacity:0}:root[data-theme=dark] .bg::after{opacity:1}@media(prefers-color-scheme: dark){:root:not([data-theme=light]) .bg::after{opacity:1}}.stage{position:relative;z-index:1;width:100%;max-width:440px}.glow{position:absolute;inset:-26px -20px;border-radius:44px;pointer-events:none;opacity:var(--glow-op);will-change:opacity;background:radial-gradient(60% 55% at 50% 42%, var(--b1), transparent 72%),radial-gradient(50% 45% at 82% 82%, var(--b2), transparent 70%);animation:breathe 6s ease-in-out infinite}@keyframes breathe{0%,100%{opacity:calc(var(--glow-op)*.55)}50%{opacity:var(--glow-op)}}.card{position:relative;padding:16px;border-radius:18px;background:var(--glass);border:1px solid var(--glass-line);box-shadow:0 18px 44px -18px rgba(20,25,63,.3);animation:pop .55s cubic-bezier(0.2, 0.7, 0.2, 1) both}.card>*{animation:rise .45s cubic-bezier(0.2, 0.7, 0.2, 1) both}.card>:nth-child(1){animation-delay:0.05s}.card>:nth-child(2){animation-delay:0.1s}.card>:nth-child(3){animation-delay:0.15s}.card>:nth-child(4){animation-delay:0.2s}.card>:nth-child(5){animation-delay:0.25s}.card>:nth-child(6){animation-delay:0.3s}.card>:nth-child(7){animation-delay:0.35s}.card>:nth-child(8){animation-delay:0.4s}@keyframes pop{from{opacity:0;transform:translateY(14px)}}@keyframes rise{from{opacity:0;transform:translateY(10px)}}header{display:flex;justify-content:space-between;align-items:center;gap:12px}.brand{display:flex;align-items:center;gap:10px;min-width:0}.logo{flex:none;display:grid;place-items:center;width:36px;height:36px;border-radius:11px;color:var(--on-brand);background:linear-gradient(135deg, var(--g1), var(--g2));box-shadow:0 6px 16px -4px var(--glow)}.logo svg{width:20px;height:20px}h1{margin:0;font:700 19px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Inter",ui-sans-serif,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;letter-spacing:-0.022em;color:rgba(0,0,0,0);background:linear-gradient(100deg, var(--ink) 30%, var(--g1) 100%);-webkit-background-clip:text;background-clip:text}.eyebrow{display:flex;align-items:center;gap:7px;margin-top:2px;font:600 10px/1.3 -apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Inter",ui-sans-serif,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;color:var(--mut)}.eyebrow .eb-dot{flex:none;width:6px;height:6px;border-radius:50%;background:var(--on)}.tb{position:relative;flex:none;display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:12px;cursor:pointer;color:var(--ink);background:var(--tile);box-shadow:inset 0 0 0 1px var(--line);transition:transform .18s cubic-bezier(0.2, 0.7, 0.2, 1),box-shadow .25s,background-color .2s,color .2s}.tb:active:not([aria-disabled=true]){transform:scale(0.95)}.tb:focus-visible{outline:2px solid var(--ink);outline-offset:2px}.tb::before{content:"";position:absolute;inset:-2px}.tb svg{width:20px;height:20px}.tb .i-sun{display:none}@media(hover: hover){.tb:hover{box-shadow:inset 0 0 0 1px var(--line),0 8px 20px -6px var(--glow)}}:root[data-theme=dark] .tb .i-moon{display:none}:root[data-theme=dark] .tb .i-sun{display:block}.bar{display:flex;align-items:center;flex-wrap:nowrap;gap:8px;margin-top:12px}.live{position:relative;flex:0 1 auto;min-width:0;display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 12px 0 10px;border-radius:9999px;background:var(--tile);box-shadow:inset 0 0 0 1px var(--line);font:500 12px/1 -apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Inter",ui-sans-serif,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:var(--mut);white-space:nowrap}.live #livet{overflow:hidden;text-overflow:ellipsis}.live .dot{position:relative;flex:none;width:8px;height:8px;border-radius:50%;background:var(--mut)}.live.ok .dot{background:var(--on)}.live.ok .dot::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--on);animation:pulse 2.4s cubic-bezier(0.2, 0.7, 0.2, 1) infinite}.live.stale .dot{background:#f2a20f}.live.bad .dot{background:var(--off)}@keyframes pulse{from{transform:scale(1);opacity:.6}to{transform:scale(3);opacity:0}}.seg{position:relative;flex:none;display:none;margin-left:auto;padding:3px;border-radius:12px;background:var(--tile);box-shadow:inset 0 0 0 1px var(--line)}.seg button{position:relative;z-index:1;flex:1 1 0;min-width:66px;height:32px;padding:0 10px;border:0;border-radius:9px;background:rgba(0,0,0,0);color:var(--mut);font:550 13px/1 -apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Inter",ui-sans-serif,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;cursor:pointer;transition:transform .18s cubic-bezier(0.2, 0.7, 0.2, 1),box-shadow .25s,background-color .2s,color .2s}.seg button:active:not([aria-disabled=true]){transform:scale(0.95)}.seg button:focus-visible{outline:2px solid var(--ink);outline-offset:2px}.seg button.sel{background:linear-gradient(120deg, var(--g1), var(--g2));color:var(--on-brand)}.seg .thumb{display:none;pointer-events:none}@supports selector(:has(*)){.seg .thumb{display:block;position:absolute;top:3px;bottom:3px;left:3px;width:calc(50% - 3px);border-radius:9px;background:linear-gradient(120deg, var(--g1), var(--g2));transition:transform .3s cubic-bezier(0.34, 1.56, 0.64, 1)}.seg button.sel{background:rgba(0,0,0,0)}.seg:has(button[data-v=tomorrow].sel) .thumb{transform:translateX(100%)}}.chead{display:flex;justify-content:space-between;align-items:baseline;margin:14px 2px 6px;font:600 12px/1 -apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Inter",ui-sans-serif,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:var(--mut)}.chips{display:grid;grid-template-columns:repeat(6, minmax(0, 1fr));grid-template-rows:repeat(2, auto);grid-auto-flow:column;gap:6px;margin:0 0 2px}.chip{position:relative;min-width:0;height:34px;padding:0;border:0;border-radius:11px;cursor:pointer;background:var(--tile);color:var(--tx);box-shadow:inset 0 0 0 1px var(--line);font:600 13px/1 -apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Inter",ui-sans-serif,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;transition:transform .18s cubic-bezier(0.2, 0.7, 0.2, 1),box-shadow .25s,background-color .2s,color .2s}.chip:active:not([aria-disabled=true]){transform:scale(0.95)}.chip:focus-visible{outline:2px solid var(--ink);outline-offset:2px}.chip::before{content:"";position:absolute;inset:-3px}.chip.sel{color:var(--on-brand);background:linear-gradient(120deg, var(--g1), var(--g2));box-shadow:0 6px 16px -6px var(--glow)}.chip.cap{opacity:.5}.chip.dis{opacity:.3;cursor:not-allowed}@media(hover: hover){.chip:not(.dis):hover{transform:translateY(-2px);box-shadow:inset 0 0 0 1px var(--line),0 10px 20px -8px var(--glow)}.chip.sel:hover{box-shadow:0 12px 24px -8px var(--glow)}}.wrap{position:relative;width:100%;max-width:360px;height:0;margin:8px auto 6px;padding-bottom:100%}svg#svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}.base{fill:none;stroke:var(--track)}.okring{fill:none;stroke:url(#gOn);opacity:.32}.arc{fill:none;stroke-linecap:butt;stroke-dasharray:1;stroke-dashoffset:1;animation:draw .9s cubic-bezier(0.2, 0.7, 0.2, 1) forwards}.arc.static{animation:none;stroke-dashoffset:0}.arc.off{stroke:url(#gOff)}.arc.maybe{stroke:#f2a20f}.arc.past{opacity:.42}@keyframes draw{to{stroke-dashoffset:0}}.tk{stroke:var(--tick);stroke-width:1.2;stroke-linecap:round}.tkm{stroke:var(--ink);stroke-width:2;stroke-linecap:round}.hr{font:600 11.5px -apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Inter",ui-sans-serif,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:var(--mut);text-anchor:middle;pointer-events:none}.hr.k{fill:var(--ink)}.lbl{font:600 10px -apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Inter",ui-sans-serif,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;fill:var(--ink);pointer-events:none;paint-order:stroke;stroke:var(--halo);stroke-width:3px;stroke-linejoin:round}.hl-b{stroke:var(--halo);stroke-width:5;stroke-linecap:round}.hl{stroke:var(--ink);stroke-width:2;stroke-linecap:round}.hp{fill:var(--ink);stroke:var(--ink);stroke-width:2;stroke-linejoin:round}svg.tm #hand{display:none}.center{position:absolute;left:50%;top:50%;transform:translate(-50%, -50%);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.tc{margin-bottom:6px;padding:5px 11px 6px;background:var(--tile);border-radius:11px;box-shadow:0 0 0 1px var(--line)}.tc small{display:block;font:600 10px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Inter",ui-sans-serif,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;letter-spacing:.09em;text-transform:uppercase;color:var(--mut)}.tc b{display:block;font:600 14px/1.35 -apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Inter",ui-sans-serif,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:var(--ink)}.lab{margin-top:3px;font:700 10px/1.25 -apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Inter",ui-sans-serif,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;letter-spacing:.07em;text-transform:uppercase;color:var(--mut)}.cd{margin-top:1px;font:650 19px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Inter",ui-sans-serif,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:var(--ink);transition:color .6s}.cl{margin-top:1px;font:500 11px/1.2 -apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Inter",ui-sans-serif,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:var(--mut)}.lab.on,.cd.on{color:var(--onx)}.lab.off,.cd.off{color:var(--offx)}.list{display:flex;flex-direction:column;gap:6px;margin-top:6px}.row{display:grid;grid-template-columns:36px 1fr;align-items:center;gap:10px;padding:9px 12px;border-radius:13px;background:var(--tile);box-shadow:0 0 0 1px var(--line);animation:rise .4s cubic-bezier(0.2, 0.7, 0.2, 1) both;transition:transform .2s cubic-bezier(0.2, 0.7, 0.2, 1),box-shadow .25s}@media(hover: hover){.row:hover{transform:translateY(-2px);box-shadow:0 0 0 1px var(--line),0 12px 24px -10px var(--glow)}}.q{font:700 13px -apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Inter",ui-sans-serif,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:var(--ink)}.st{font-size:14px;color:var(--ink)}.st b{font-weight:600}.st .mut{font-weight:400}.sub{margin-top:1px;font:500 12px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Inter",ui-sans-serif,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:var(--mut)}.pill{display:inline-block;width:8px;height:8px;margin-right:7px;border-radius:50%;vertical-align:1px;box-shadow:0 0 6px currentColor}#upd{margin:8px 0 0;font-size:12px}.toast{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top, 0px));z-index:9;display:flex;align-items:center;padding:10px 16px;border-radius:14px;background:linear-gradient(120deg, var(--g1), var(--g2));color:var(--on-brand);box-shadow:0 10px 28px -8px var(--glow);font:600 13px/1.3 -apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Inter",ui-sans-serif,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;opacity:0;transform:translate(-50%, -170%);transition:transform .45s cubic-bezier(0.34, 1.56, 0.64, 1),opacity .2s;pointer-events:none}.toast::before{content:"";flex:none;width:8px;height:8px;margin-right:10px;border-radius:50%;background:currentColor}.toast.show{opacity:1;transform:translate(-50%, 0)}@media(prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.001ms !important;animation-delay:0s !important;animation-iteration-count:1 !important;transition-duration:.001ms !important}.arc{animation:none;stroke-dashoffset:0}.live.ok .dot::after,.glow{display:none}}
+/* Палітри фону по чергах (колір = перша обрана черга). --b1..--b3 — плями фону, --glow — світіння/тіні.
+   Кожна черга має власний відтінок; стан «світло є/немає» підмішує колір лише в --b3. Правити можна прямо тут. */
+:root[data-queue="1.1"]{--b1:#76cdf9;--b2:#6e6ef7;--b3:#a7fbdf;--glow:rgba(29,167,237,0.38)}
+:root[data-theme="dark"][data-queue="1.1"]{--b1:#1a94d1;--b2:#1313ae;--b3:#1fc18b;--glow:rgba(66,182,240,0.4)}
+:root[data-queue="1.2"]{--b1:#f9768c;--b2:#f7b26e;--b3:#fba7ed;--glow:rgba(237,29,63,0.38)}
+:root[data-theme="dark"][data-queue="1.2"]{--b1:#d11a38;--b2:#ae6113;--b3:#c11fa6;--glow:rgba(240,66,95,0.4)}
+:root[data-queue="2.1"]{--b1:#76f9a2;--b2:#6ef7f7;--b3:#c3fba7;--glow:rgba(29,237,98,0.38)}
+:root[data-theme="dark"][data-queue="2.1"]{--b1:#1ad157;--b2:#13aeae;--b3:#55c11f;--glow:rgba(66,240,124,0.4)}
+:root[data-queue="2.2"]{--b1:#e376f9;--b2:#f76eb3;--b3:#b5a7fb;--glow:rgba(202,29,237,0.38)}
+:root[data-theme="dark"][data-queue="2.2"]{--b1:#b21ad1;--b2:#ae1361;--b3:#3a1fc1;--glow:rgba(211,66,240,0.4)}
+:root[data-queue="3.1"]{--b1:#cdf976;--b2:#6ef76e;--b3:#fbdfa7;--glow:rgba(167,237,29,0.38)}
+:root[data-theme="dark"][data-queue="3.1"]{--b1:#94d11a;--b2:#13ae13;--b3:#c18b1f;--glow:rgba(182,240,66,0.4)}
+:root[data-queue="3.2"]{--b1:#768cf9;--b2:#b26ef7;--b3:#a7edfb;--glow:rgba(29,63,237,0.38)}
+:root[data-theme="dark"][data-queue="3.2"]{--b1:#1a38d1;--b2:#6113ae;--b3:#1fa6c1;--glow:rgba(66,95,240,0.4)}
+:root[data-queue="4.1"]{--b1:#f9a276;--b2:#f7f76e;--b3:#fba7c3;--glow:rgba(237,98,29,0.38)}
+:root[data-theme="dark"][data-queue="4.1"]{--b1:#d1571a;--b2:#aeae13;--b3:#c11f55;--glow:rgba(240,124,66,0.4)}
+:root[data-queue="4.2"]{--b1:#76f9e3;--b2:#6eb2f7;--b3:#a7fbb5;--glow:rgba(29,237,202,0.38)}
+:root[data-theme="dark"][data-queue="4.2"]{--b1:#1ad1b2;--b2:#1361ae;--b3:#1fc13a;--glow:rgba(66,240,211,0.4)}
+:root[data-queue="5.1"]{--b1:#f976cd;--b2:#f76e6e;--b3:#dfa7fb;--glow:rgba(237,29,167,0.38)}
+:root[data-theme="dark"][data-queue="5.1"]{--b1:#d11a94;--b2:#ae1313;--b3:#8b1fc1;--glow:rgba(240,66,182,0.4)}
+:root[data-queue="5.2"]{--b1:#8cf976;--b2:#6ef7b3;--b3:#edfba7;--glow:rgba(63,237,29,0.38)}
+:root[data-theme="dark"][data-queue="5.2"]{--b1:#38d11a;--b2:#13ae61;--b3:#a6c11f;--glow:rgba(95,240,66,0.4)}
+:root[data-queue="6.1"]{--b1:#a276f9;--b2:#f76ef7;--b3:#a7c3fb;--glow:rgba(98,29,237,0.38)}
+:root[data-theme="dark"][data-queue="6.1"]{--b1:#571ad1;--b2:#ae13ae;--b3:#1f55c1;--glow:rgba(124,66,240,0.4)}
+:root[data-queue="6.2"]{--b1:#f9e376;--b2:#b3f76e;--b3:#fbb5a7;--glow:rgba(237,202,29,0.38)}
+:root[data-theme="dark"][data-queue="6.2"]{--b1:#d1b21a;--b2:#61ae13;--b3:#c13a1f;--glow:rgba(240,211,66,0.4)}
+:root[data-queue][data-state="on"]{--b3:#a7f3d0}
+:root[data-queue][data-state="off"]{--b3:#fcd34d}
+:root[data-theme="dark"][data-queue][data-state="on"]{--b3:#10b981}
+:root[data-theme="dark"][data-queue][data-state="off"]{--b3:#d97706}
+/* Фон «північне сяйво»: ОДИН шар із 14 м'якими градієнтними «точками» (кольори палітри черги, різна альфа).
+   Анімується лише transform цілого шару → навантаження як від одного шару. Розмір шару залежить від вікна (inset у %),
+   режим — від data-bg (full/lite/off, ставить JS за розміром вікна й щільністю пікселів). */
+.bg i{position:absolute;inset:-18%;opacity:calc(var(--blob-op) * 1.5);will-change:transform;background:radial-gradient(ellipse 46% 14% at 22% 14%,color-mix(in srgb,var(--b1) 62%,transparent),transparent 72%),radial-gradient(ellipse 38% 12% at 72% 10%,color-mix(in srgb,var(--b2) 55%,transparent),transparent 72%),radial-gradient(ellipse 52% 15% at 46% 27%,color-mix(in srgb,var(--b3) 50%,transparent),transparent 74%),radial-gradient(ellipse 30% 19% at 88% 32%,color-mix(in srgb,var(--b1) 40%,transparent),transparent 72%),radial-gradient(ellipse 34% 13% at 10% 42%,color-mix(in srgb,var(--b2) 48%,transparent),transparent 72%),radial-gradient(ellipse 44% 17% at 62% 50%,color-mix(in srgb,color-mix(in srgb,var(--b1),var(--b2)) 46%,transparent),transparent 74%),radial-gradient(ellipse 28% 15% at 28% 64%,color-mix(in srgb,var(--b3) 42%,transparent),transparent 72%),radial-gradient(ellipse 40% 13% at 82% 68%,color-mix(in srgb,var(--b1) 48%,transparent),transparent 72%),radial-gradient(ellipse 36% 17% at 16% 84%,color-mix(in srgb,color-mix(in srgb,var(--b2),var(--b3)) 44%,transparent),transparent 74%),radial-gradient(ellipse 48% 14% at 56% 90%,color-mix(in srgb,var(--b2) 42%,transparent),transparent 72%),radial-gradient(circle 11vmax at 42% 6%,color-mix(in srgb,var(--b3) 70%,transparent),transparent 70%),radial-gradient(circle 9vmax at 93% 56%,color-mix(in srgb,var(--b1) 62%,transparent),transparent 70%),radial-gradient(circle 10vmax at 5% 24%,color-mix(in srgb,var(--b2) 58%,transparent),transparent 70%),radial-gradient(circle 8vmax at 74% 38%,color-mix(in srgb,var(--b3) 55%,transparent),transparent 70%);animation:aur 60s ease-in-out infinite alternate}
+@keyframes aur{0%{transform:translate3d(-3%,-2%,0) rotate(-5deg) scale(1)}50%{transform:translate3d(2.5%,3%,0) rotate(3.5deg) scale(1.07)}100%{transform:translate3d(-1.5%,2%,0) rotate(-2deg) scale(1.03)}}
+@keyframes aurl{from{transform:translate3d(-2%,-1.5%,0)}to{transform:translate3d(2%,2%,0)}}
+:root[data-bg=lite] .bg i{inset:-8%;animation-name:aurl}
+:root[data-bg=off] .bg i{inset:0;animation:none}
+html.bg-pause .bg i,html.bg-pause .glow{animation-play-state:paused}
+@media(prefers-reduced-motion: reduce){.bg i{animation:none}}
+</style>
+</head>
+<body>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="bg" aria-hidden="true"><i></i></div>
+<div class="stage"><div class="glow" aria-hidden="true"></div>
+<main class="card">
+  <header>
+    <div class="brand">
+      <span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg></span>
+      <div><h1>Графіки відключень</h1><small class="eyebrow"><i class="eb-dot"></i><span>Черкасиобленерго · <span id="date"></span></span></small></div>
+    </div>
+    <button class="tb" id="tb" aria-label="Темна тема">
+      <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      <svg class="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    </button>
+  </header>
+  <div class="bar">
+    <div class="live" id="live"><span class="dot"></span><span id="livet">завантаження…</span></div>
+    <div class="seg" id="seg" role="group" aria-label="День"><span class="thumb"></span><button data-v="today" class="sel">Сьогодні</button><button data-v="tomorrow">Завтра</button></div>
+  </div>
+  <div class="chead"><span>Черги</span><span id="cnt"></span></div>
+  <div class="chips" id="chips" role="group" aria-label="Черги"></div>
+  <div class="wrap" id="wrap"><svg viewBox="-30 -30 360 360" id="svg" role="img" aria-label="Добовий годинник відключень"></svg><div class="center" id="center"><div class="tc"><small>Зараз</small><b id="now">--:--:--</b></div><div class="lab" id="lab"></div><div class="cd" id="cd"></div><div class="cl" id="cl"></div></div></div>
+  <div class="list" id="list"></div>
+  <p class="mut" id="upd"></p>
+</main></div>
+<script async src="https://telegram.org/js/telegram-web-app.js" onload="try{Telegram.WebApp.ready();Telegram.WebApp.expand()}catch(e){}"></script>
+<script>
+// Усі 12 черг показуються, але вмикаються лише ті, які реально парсить бот (поле "queues" в /api/schedule).
+var QS=["1.1","1.2","2.1","2.2","3.1","3.2","4.1","4.2","5.1","5.2","6.1","6.2"];
+var C=150,OUT=143,POLL=10000,FRESH=90,MINC=96,CAP=3,GEO={1:[18,21],2:[18,21],3:[18,21],4:[15,18],5:[13,16],6:[11,14]};
+// геометрія кілець залежить від їх кількості: більше кілець — тонші; зовнішній край завжди на радіусі OUT
+function geo(n){var g=GEO[Math.min(Math.max(n,1),6)];return{W:g[0],STEP:g[1],R0:OUT-g[0]/2}}
+// вільний діаметр центру (одиниці viewBox), де має вміститись годинник і зворотний відлік
+function freeD(n){var g=geo(n);return 2*(g.R0-(n-1)*g.STEP-g.W/2-8)}
+// скільки кілець вміщується при поточній ширині кола (px): центр не менше MINC px
+function measureCap(){var px=document.getElementById("wrap").getBoundingClientRect().width||300,c=1;for(var n=2;n<=6;n++)if(freeD(n)*px/360>=MINC)c=n;var ch=c!==CAP;CAP=c;return ch}
+var $=function(i){return document.getElementById(i)};
+var api=null,sel=[],animQ=null,view="today",sigs={},fetchedAt=0,failed=false,lastKey="",lastMin=-1;
+var saved=[];try{saved=JSON.parse(localStorage.getItem("sel")||"[]")||[]}catch(e){}
+
+/* ---------- час (Київ) ---------- */
+function mkFmt(opts){try{return new Intl.DateTimeFormat("en-GB",Object.assign({timeZone:"Europe/Kyiv"},opts))}catch(e){return new Intl.DateTimeFormat("en-GB",Object.assign({timeZone:"Europe/Kiev"},opts))}}
+var FM=mkFmt({hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false});
+var DF=mkFmt({year:"numeric",month:"2-digit",day:"2-digit"});
+function kyiv(){var o={};FM.formatToParts(new Date()).forEach(function(p){o[p.type]=+p.value});o.hour=o.hour%24;return o}
+function nowMin(){var k=kyiv();return k.hour*60+k.minute+k.second/60}
+function keyOf(){var o={};DF.formatToParts(new Date()).forEach(function(p){o[p.type]=p.value});return o.year+"-"+o.month+"-"+o.day}
+function addDay(k,n){var p=k.split("-");return new Date(Date.UTC(+p[0],+p[1]-1,+p[2]+n)).toISOString().slice(0,10)}
+function viewKey(){return view==="tomorrow"?addDay(keyOf(),1):keyOf()}
+function pad(x){return String(x).padStart(2,"0")}
+function hm(m){if(m===1440)return"24:00";m=((Math.round(m)%1440)+1440)%1440;return pad(Math.floor(m/60))+":"+pad(m%60)}
+function hhmm(ms){try{return new Date(ms).toLocaleTimeString("uk-UA",{hour:"2-digit",minute:"2-digit",timeZone:"Europe/Kyiv"})}catch(e){return""}}
+
+/* ---------- дані бота ---------- */
+function enabled(q){return !!(api&&api.queues&&api.queues.indexOf(q)>-1)}
+function dayRec(q,key){var d=api&&api.days&&api.days[key];return d&&d[q]?d[q]:null}
+function daySlots(q,key){var r=dayRec(q,key);return r?r.slots:null}
+function hasTomorrow(){var k=addDay(keyOf(),1);return QS.some(function(q){return enabled(q)&&daySlots(q,k)!==null})}
+// суцільна лінія часу: сьогодні + завтра (зсув 1440), сусідні інтервали зливаються (23:00–24:00 + 00:00–01:00)
+function timeline(q){
+  var t=[],a=daySlots(q,keyOf())||[],b=daySlots(q,addDay(keyOf(),1))||[];
+  a.forEach(function(x){t.push({s:x.s,e:x.e})});
+  b.forEach(function(x){t.push({s:x.s+1440,e:x.e+1440})});
+  t.sort(function(x,y){return x.s-y.s});
+  var m=[];t.forEach(function(x){var l=m[m.length-1];if(l&&x.s<=l.e)l.e=Math.max(l.e,x.e);else m.push({s:x.s,e:x.e})});
+  return m;
+}
+function dayTag(m){return m>1440?" (завтра)":""}
+function qStatus(q){
+  if(daySlots(q,keyOf())===null)return{nodata:true,txt:"немає даних на сьогодні"};
+  var n=nowMin(),cur=null,nx=null;
+  timeline(q).forEach(function(x){if(n>=x.s&&n<x.e)cur=x;else if(x.s>n&&!nx)nx=x});
+  if(cur)return{off:true,at:cur.e,txt:"до "+hm(cur.e)+dayTag(cur.e)};
+  if(nx)return{off:false,next:true,at:nx.s,txt:"до "+hm(nx.s)+dayTag(nx.s)};
+  return{off:false,at:null,txt:"до кінця доби"};
+}
+
+/* ---------- малювання ---------- */
+function pt(m,r){var a=m/1440*2*Math.PI-Math.PI/2;return[C+r*Math.cos(a),C+r*Math.sin(a)]}
+function arc(s,e,r){var p=pt(s,r),q=pt(e,r);return"M"+p[0].toFixed(2)+" "+p[1].toFixed(2)+"A"+r+" "+r+" 0 "+(e-s>720?1:0)+" 1 "+q[0].toFixed(2)+" "+q[1].toFixed(2)}
+function defs(){return'<defs><linearGradient id="gOff" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="300" y2="300"><stop offset="0" style="stop-color:var(--off1)"/><stop offset="1" style="stop-color:var(--off2)"/></linearGradient><linearGradient id="gOn" gradientUnits="userSpaceOnUse" x1="0" y1="300" x2="300" y2="0"><stop offset="0" style="stop-color:var(--on1)"/><stop offset="1" style="stop-color:var(--on2)"/></linearGradient></defs>'}
+// шкала годин зовні кола (як на годиннику): 24 поділки, підписи кожні 3 год, північ угорі, за годинниковою стрілкою
+function scale(){
+  var E=OUT,h="";
+  for(var i=0;i<24;i++){
+    var a=i*15*Math.PI/180,sn=Math.sin(a),cs=-Math.cos(a),major=i%3===0,r1=E+5,r2=E+(major?13:9);
+    h+='<line class="'+(major?"tkm":"tk")+'" x1="'+(C+r1*sn).toFixed(2)+'" y1="'+(C+r1*cs).toFixed(2)+'" x2="'+(C+r2*sn).toFixed(2)+'" y2="'+(C+r2*cs).toFixed(2)+'"/>';
+    if(major){var rl=E+27;h+='<text class="hr'+(i%12===0?" k":"")+'" dy=".35em" x="'+(C+rl*sn).toFixed(2)+'" y="'+(C+rl*cs).toFixed(2)+'">'+i+'</text>'}
+  }
+  return h;
+}
+function arcP(a,b,cls,dl,r,W,st){return'<path class="arc off '+cls+st+'" pathLength="1" stroke-width="'+W+'" style="animation-delay:'+dl+'s" d="'+arc(a,b,r)+'"/>'}
+function drawRings(){
+  var g=geo(sel.length||1),W=g.W,R0=g.R0,STEP=g.STEP,h=defs()+scale(),vk=viewKey(),E=OUT,nm=view==='today'?nowMin():-1;
+  sel.forEach(function(q,k){
+    var r=R0-k*STEP;
+    h+='<circle class="base" cx="150" cy="150" r="'+r+'" stroke-width="'+W+'"/><circle class="okring" cx="150" cy="150" r="'+r+'" stroke-width="'+W+'"/>';
+    var st=(animQ&&animQ!==q)?" static":"";
+    var sl=daySlots(q,vk)||[];
+    var edge0=sl.some(function(x){return x.s===0&&x.e<1440}),edge24=sl.some(function(x){return x.e>=1440&&x.s>0}),G=(edge0&&edge24)?2.5:0;   // тонкий розрив на півночі між РІЗНИМИ відключеннями
+    sl.forEach(function(x,i){
+      var parts=(x.e-x.s>=1440)?[[x.s,x.s+720],[x.s+720,x.e]]:[[x.s,x.e]],dl=k*.12+i*.15;
+      parts.forEach(function(p){
+        var a=p[0],b=p[1];if(G){if(x.s===0&&a===0&&x.e<1440)a=G;if(x.e>=1440&&x.s>0&&b>=1440)b=1440-G}
+        if(nm>a&&nm<b){h+=arcP(a,nm,"past",dl,r,W,st)+arcP(nm,b,"",dl,r,W,st)}   // триває зараз
+        else h+=arcP(a,b,(nm>=0&&b<=nm)?"past":"",dl,r,W,st);
+      });
+    });
+    h+='<text class="lbl" x="150" y="'+(150-r)+'" text-anchor="middle" dy=".35em" style="font-size:'+Math.min(10,W-2.5)+'px">'+q+'</text>';
+  });
+  // стрілка поточного часу: трикутник ззовні кільця + тонка лінія через усі кільця (обертається в tick())
+  var inner=R0-(Math.max(sel.length,1)-1)*STEP-W/2;
+  h+='<g id="hand"><line class="hl-b" x1="150" y1="'+(150-E)+'" x2="150" y2="'+(150-inner)+'"/>'+
+     '<line class="hl" x1="150" y1="'+(150-E)+'" x2="150" y2="'+(150-inner)+'"/>'+
+     '<path class="hp" d="M150 '+(150-E-1)+'L144 '+(150-E-13)+'L156 '+(150-E-13)+'Z"/></g>';
+  $("svg").innerHTML=h;
+  $("svg").setAttribute("class",view==="tomorrow"?"tm":"");
+  $("center").style.width=((inner-8)*2/360*100)+"%";
+}
+function renderChips(){
+  var lim=sel.length>=CAP;
+  $("chips").innerHTML=QS.map(function(q){
+    var on=enabled(q),s=sel.indexOf(q)>-1;
+    return'<button class="chip'+(s?" sel":"")+(on?"":" dis")+(!s&&on&&lim?" cap":"")+'" data-q="'+q+'" aria-pressed="'+s+'" aria-disabled="'+(on?"false":"true")+'"'+(on?"":' title="Немає даних по цій черзі"')+'>'+q+'</button>';
+  }).join("");
+  $("cnt").textContent=sel.length+" з "+CAP;
+}
+function segUi(){
+  var has=hasTomorrow();
+  if(!has&&view==="tomorrow")view="today";
+  $("seg").style.display=has?"flex":"none";
+  var b=$("seg").querySelectorAll("button");
+  for(var i=0;i<b.length;i++)b[i].className=b[i].getAttribute("data-v")===view?"sel":"";
+}
+function setDate(){
+  try{$("date").textContent=new Date(viewKey()+"T12:00:00Z").toLocaleDateString("uk-UA",{day:"numeric",month:"long",timeZone:"UTC"})}catch(e){}
+}
+var liveC="",liveT="";
+function setLive(c,t){if(c!==liveC){$("live").className=c;liveC=c}if(t!==liveT){$("livet").textContent=t;liveT=t}}
+function liveUi(){
+  if(failed)return setLive("live bad","немає зв'язку");
+  if(!api)return setLive("live","завантаження…");
+  if(api.checkedAt==null)return setLive("live stale","збираю дані…");
+  var age=(api.serverTime-api.checkedAt+(Date.now()-fetchedAt))/1000,ok=age<=FRESH;
+  setLive(ok?"live ok":"live stale",ok?"наживо":"застаріло");
+}
+function upd(){
+  if(!api){$("upd").textContent="";return}
+  if(!sel.length){$("upd").textContent=enabled(QS[0])||api.queues.length?"":"Бот ще не отримав графіків.";return}
+  var m=0,vk=viewKey();sel.forEach(function(q){var r=dayRec(q,vk);if(r&&r.updatedAt)m=Math.max(m,r.updatedAt)});
+  $("upd").textContent=m?"Останній графік у каналі опубліковано о "+hhmm(m):"";
+}
+function subText(q,vk){
+  var sl=daySlots(q,vk),r=dayRec(q,vk),txt;
+  if(sl===null)txt="немає даних на цей день";
+  else if(!sl.length)txt="відключень немає";
+  else txt=sl.slice().sort(function(a,b){return a.s-b.s}).map(function(x){return hm(x.s)+"–"+hm(x.e)}).join(" · ");
+  if(r&&r.updatedAt)txt+=" · оновлено "+hhmm(r.updatedAt);
+  return txt;
+}
+function tick(){
+  var q0=sel[0]||"",rt=document.documentElement;if((rt.getAttribute("data-queue")||"")!==q0){if(q0)rt.setAttribute("data-queue",q0);else rt.removeAttribute("data-queue")}
+  var n=nowMin(),rot="rotate("+(n/1440*360)+" 150 150)";
+  var mk=Math.floor(n);if(mk!==lastMin){var f0=lastMin===-1;lastMin=mk;if(!f0&&api&&sel.length&&view==="today"){animQ="-";drawRings();rot="rotate("+(n/1440*360)+" 150 150)"}}
+  var hd=$("hand");if(hd)hd.setAttribute("transform",rot);
+  var k0=kyiv();$("now").textContent=pad(k0.hour)+":"+pad(k0.minute)+":"+pad(k0.second);
+  liveUi();
+  var kk=keyOf();if(api&&lastKey&&kk!==lastKey){lastKey=kk;animQ=null;segUi();setDate();drawRings();$("list").dataset.k="";}
+  lastKey=kk;
+  if(!api){$("lab").textContent="Завантаження";$("lab").className="lab";$("cd").textContent="";$("cl").textContent="";return}
+  if(!sel.length){$("lab").textContent=api.queues.length?"Оберіть чергу":"Немає даних";$("lab").className="lab";$("cd").textContent="";$("cl").textContent="";return}
+  var q=sel[0],s=qStatus(q);var st_=s.nodata?"idle":(s.off?"off":"on");if(document.documentElement.getAttribute("data-state")!==st_)document.documentElement.setAttribute("data-state",st_);
+  var sec=s.at!=null?Math.max(0,Math.round((s.at-n)*60)):null;
+  var cls="",lab;
+  if(s.nodata){lab="Немає даних";sec=null}
+  else if(s.off){cls="on";lab="До ввімкнення"}
+  else if(s.next){cls="off";lab="До відключення"}
+  else{cls="on";lab="Відключень більше немає"}
+  $("lab").textContent=lab;$("lab").className="lab "+cls;
+  $("cd").className="cd "+cls;
+  $("cd").textContent=sec!=null?pad(Math.floor(sec/3600))+":"+pad(Math.floor(sec/60)%60)+":"+pad(sec%60):"";
+  $("cl").textContent="черга "+q;
+  if($("list").dataset.k!=="ok"){
+    var h="",vk=viewKey();
+    sel.forEach(function(q,i){
+      h+='<div class="row" style="animation-delay:'+(i*.07)+'s"><span class="q">'+q+'</span><div><div class="st" id="st-'+q.replace(".","")+'"></div><div class="sub" id="sb-'+q.replace(".","")+'">'+subText(q,vk)+'</div></div></div>';
+    });
+    $("list").innerHTML=h;$("list").dataset.k="ok";
+  }
+  sel.forEach(function(q){
+    var s=qStatus(q),col=s.nodata?"mut":(s.off?"off":"on");
+    var txt=s.nodata?"Немає даних":(s.off?"Світла немає":"Світло є");
+    var e=$("st-"+q.replace(".",""));
+    var html='<span class="pill" style="background:var(--'+col+')"></span><b>'+txt+'</b> <span class="mut">'+s.txt+'</span>';
+    if(e&&e.dataset.h!==html){e.innerHTML=html;e.dataset.h=html}
+  });
+}
+function toast(t){var e=$("toast");e.textContent=t;e.classList.add("show");setTimeout(function(){e.classList.remove("show")},3000)}
+function full(){renderChips();segUi();setDate();drawRings();$("list").dataset.k="";tick();upd()}
+
+/* ---------- отримання даних від бота ---------- */
+function applyApi(j){
+  var first=!api,changed=[],prevQ=api?api.queues.join(","):"";
+  var ns={};
+  Object.keys(j.days||{}).forEach(function(k){Object.keys(j.days[k]).forEach(function(q){
+    var sg=JSON.stringify(j.days[k][q].slots);ns[q+"|"+k]=sg;
+    if(!first&&sigs[q+"|"+k]!==sg&&k===keyOf())changed.push(q);
+  })});
+  sigs=ns;api=j;fetchedAt=Date.now();failed=false;lastKey=keyOf();
+  var en=QS.filter(enabled),trim=false;measureCap();
+  if(first){
+    sel=saved.filter(function(q){return en.indexOf(q)>-1}).slice(0,CAP);
+    if(!sel.length)sel=(j.displayQueues||[]).filter(function(q){return en.indexOf(q)>-1}).slice(0,CAP);
+    if(!sel.length&&en.length)sel=[en[0]];
+  }else{var n0=sel.length;sel=sel.filter(function(q){return en.indexOf(q)>-1}).slice(0,CAP);trim=sel.length!==n0}
+  var vis=changed.filter(function(q){return sel.indexOf(q)>-1});
+  var redraw=first||changed.length||trim||prevQ!==j.queues.join(",");
+  if(redraw){
+    animQ=vis.length&&view==="today"?vis[0]:null;
+    full();
+    if(vis.length)toast("Графік черги "+vis[0]+" оновлено");
+  }else{segUi();upd();liveUi()}
+}
+function poll(){
+  if(document.hidden&&api)return;
+  var ctl=window.AbortController?new AbortController():null;
+  var to=setTimeout(function(){if(ctl)ctl.abort()},8000);
+  fetch("/api/schedule",{cache:"no-store",signal:ctl?ctl.signal:undefined})
+    .then(function(r){if(!r.ok)throw new Error("http "+r.status);return r.json()})
+    .then(function(j){clearTimeout(to);applyApi(j)})
+    .catch(function(){clearTimeout(to);failed=true;liveUi()});
+}
+
+/* ---------- взаємодія ---------- */
+$("chips").onclick=function(e){
+  var b=e.target.closest?e.target.closest("button"):e.target,q=b&&b.dataset&&b.dataset.q;if(!q)return;
+  if(b.classList.contains("dis")){toast("Немає даних по черзі "+q);return}
+  var i=sel.indexOf(q);
+  if(i>-1)sel.splice(i,1);else{if(sel.length>=CAP){toast("На цьому екрані вміщається до "+CAP+" черг");return}sel.push(q)}
+  try{localStorage.setItem("sel",JSON.stringify(sel))}catch(x){}
+  animQ=null;renderChips();drawRings();$("list").dataset.k="";tick();upd();
+};
+var rz=0;window.addEventListener("resize",function(){clearTimeout(rz);rz=setTimeout(function(){
+  if(!api)return;var c0=CAP;measureCap();if(CAP===c0)return;
+  var n0=sel.length;sel=sel.slice(0,CAP);animQ=null;full();
+  if(sel.length<n0)toast("Показано "+sel.length+" "+(sel.length===1?"чергу":"черги")+": стільки вміщається у вікні");
+},150)});
+$("seg").onclick=function(e){
+  var v=e.target.getAttribute&&e.target.getAttribute("data-v");if(!v||v===view)return;
+  view=v;animQ=null;segUi();setDate();drawRings();$("list").dataset.k="";tick();upd();
+};
+function setTheme(m,save,nofx){var r=document.documentElement;if(save&&!nofx){r.classList.add("tx");setTimeout(function(){r.classList.remove("tx")},900)}r.setAttribute("data-theme",m);$("tb").setAttribute("aria-label",m=="dark"?"Світла тема":"Темна тема");if(save)try{localStorage.setItem("theme",m)}catch(e){}}
+var th=null;try{th=localStorage.getItem("theme")}catch(e){}
+setTheme(th||(window.matchMedia&&matchMedia("(prefers-color-scheme:dark)").matches?"dark":"light"),false);
+$("tb").onclick=function(){var r=document.documentElement,next=r.getAttribute("data-theme")=="dark"?"light":"dark";
+if(!document.startViewTransition||(/Linux/.test(navigator.userAgent)&&!/Android|Chrome|Chromium/.test(navigator.userAgent))||(window.matchMedia&&matchMedia("(prefers-reduced-motion:reduce)").matches)){setTheme(next,true);return}
+var b=this.getBoundingClientRect(),x=b.left+b.width/2,y=b.top+b.height/2,R=Math.hypot(Math.max(x,innerWidth-x),Math.max(y,innerHeight-y));
+r.classList.add("vt");
+var t=document.startViewTransition(function(){setTheme(next,true,true)});
+t.ready.then(function(){r.animate({clipPath:["circle(0px at "+x+"px "+y+"px)","circle("+R+"px at "+x+"px "+y+"px)"]},{duration:800,easing:"cubic-bezier(.4,0,.2,1)",pseudoElement:"::view-transition-new(root)"})});
+var done=function(){r.classList.remove("vt")};t.finished.then(done,done)};
+document.addEventListener("visibilitychange",function(){if(!document.hidden)poll()});
+
+// Фон: режим за розміром вікна/вкладки і щільністю пікселів (full — обертання+дрейф, lite — лише легкий дрейф, off — статично); пауза у прихованій вкладці
+function bgTier(){
+  var w=innerWidth,h=innerHeight,px=w*h*Math.pow(window.devicePixelRatio||1,2),t="full";
+  if(px>14e6||Math.min(w,h)<240)t="off";else if(px>6e6||w<340||h<420)t="lite";
+  if(document.documentElement.getAttribute("data-bg")!==t)document.documentElement.setAttribute("data-bg",t);
+}
+var bgT=0;window.addEventListener("resize",function(){clearTimeout(bgT);bgT=setTimeout(bgTier,200)});
+document.addEventListener("visibilitychange",function(){document.documentElement.classList.toggle("bg-pause",document.hidden)});
+document.documentElement.classList.toggle("bg-pause",document.hidden);bgTier();
+
+measureCap();renderChips();setDate();drawRings();tick();
+setInterval(tick,1000);
+poll();setInterval(poll,POLL);
+</script>
+</body>
+</html>
