@@ -1,448 +1,353 @@
-import os
-import re
+"""Бот графіків відключень: підписка через /start, сповіщення про зміни та за 10 хв до вимкнення/ввімкнення."""
+import asyncio
 import json
 import logging
-import asyncio
-import subprocess
-import tempfile
+import os
+import random
 import time
-from collections import deque, defaultdict
-from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor
+from datetime import date
 
-from telegram import Update
-from telegram.error import BadRequest, Forbidden, NetworkError
-from telegram.ext import Application, MessageHandler, CommandHandler, filters, ContextTypes
+import httpx
+from telegram import Bot, BotCommand, InlineKeyboardButton, InlineKeyboardMarkup, Update, WebAppInfo
+from telegram.error import BadRequest, Forbidden, NetworkError, RetryAfter
+from telegram.ext import Application, CommandHandler, ContextTypes
 
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+import graph
 
-# ──────────────────────────────────────────
-# CONFIG
-# ──────────────────────────────────────────
+logger = logging.getLogger("bot")
+
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
-WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "")
-ADMIN_USER_ID = int(os.environ.get("ADMIN_USER_ID") or "0")
-INSTAGRAM_COOKIES_RAW = os.environ.get("INSTAGRAM_COOKIES", "").replace("\\n", "\n").replace("\\t", "\t")
-_COOKIES_FILE: str | None = None
+WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "").rstrip("/")
+ADMIN_USER_ID = int(os.environ.get("ADMIN_USER_ID") or 0)  # необов'язково: сповіщення, якщо джерело недоступне
+POLL_INTERVAL = max(10.0, float(os.environ.get("POLL_SEC") or 30))
+LEAD_MIN = int(os.environ.get("ALERT_LEAD_MIN") or 10)
+STATE_PATH = os.environ.get("STATE_PATH", "state.json")
+PAGE_URL = os.environ.get("PAGE_URL") or (f"{WEBHOOK_URL}/schedule" if WEBHOOK_URL else "")
+MINIAPP_URL = os.environ.get("MINIAPP_URL", "")  # https://t.me/<бот>/<назва> — кнопка в групах
+OUTAGE_ALERT_SEC = 300
 
-REQUEST_LIMIT = 50
-REQUEST_WINDOW = 3600
-COOLDOWN_TIME = 1800
+_status: dict = {"last_ok": None, "last_error": None}
+_api: dict = {"data": None}
+_tasks: set[asyncio.Task] = set()
 
-user_timestamps: dict[int, deque] = {}
-user_cooldowns: dict[int, float] = {}
-_processing: set[str] = set()
-_sent_messages: dict[int, deque] = defaultdict(lambda: deque(maxlen=200))
 
 # ──────────────────────────────────────────
-# URL PATTERNS
+# СТАН: підписники, останні відомі графіки, надіслані нагадування
 # ──────────────────────────────────────────
-INSTAGRAM_PATTERNS = [
-    re.compile(r'https?://(?:www\.)?instagram\.com/(?:p|reel|reels|tv)/([A-Za-z0-9_-]+)/?'),
-    re.compile(r'https?://(?:www\.)?instagram\.com/stories/([A-Za-z0-9_.]+)/(\d+)/?'),
-    re.compile(r'https?://instagr\.am/(?:p|reel)/([A-Za-z0-9_-]+)/?'),
-]
-
-FACEBOOK_PATTERNS = [
-    re.compile(r'https?://(?:www\.|m\.|web\.)?facebook\.com/watch/?\?v=[\d]+'),
-    re.compile(r'https?://(?:www\.|m\.|web\.)?facebook\.com/[\w.-]+/videos/[\d\w-]+'),
-    re.compile(r'https?://(?:www\.|m\.|web\.)?facebook\.com/share/[vr]/[\w-]+'),
-    re.compile(r'https?://fb\.watch/[\w-]+'),
-    # Facebook Reels
-    re.compile(r'https?://(?:www\.|m\.|web\.)?facebook\.com/reels?/[\d]+'),
-    re.compile(r'https?://(?:www\.|m\.|web\.)?facebook\.com/[\w.-]+/reels?/[\d\w-]+'),
-    re.compile(r'https?://(?:www\.|m\.|web\.)?facebook\.com/share/r/[\w-]+'),
-]
+REDIS_URL = os.environ.get("UPSTASH_REDIS_REST_URL", "").rstrip("/")
+REDIS_TOKEN = os.environ.get("UPSTASH_REDIS_REST_TOKEN", "")
+REDIS_KEY = os.environ.get("STATE_KEY", "bot_state")
+_writer = ThreadPoolExecutor(max_workers=1)  # одна черга запису: порядок збережено, цикл не блокується
 
 
-def extract_url(text: str) -> tuple[str, str] | None:
-    for pattern in INSTAGRAM_PATTERNS:
-        match = pattern.search(text)
-        if match:
-            return match.group(0).split('?')[0].rstrip('/'), "instagram"
-    for pattern in FACEBOOK_PATTERNS:
-        match = pattern.search(text)
-        if match:
-            return match.group(0).split('?')[0], "facebook"
-    return None
+def _redis(*cmd: str):
+    r = httpx.post(REDIS_URL, json=list(cmd), headers={"Authorization": f"Bearer {REDIS_TOKEN}"}, timeout=10)
+    r.raise_for_status()
+    return r.json().get("result")
 
-# ──────────────────────────────────────────
-# COOKIES
-# ──────────────────────────────────────────
-def _init_cookies() -> None:
-    global _COOKIES_FILE
-    if not INSTAGRAM_COOKIES_RAW:
-        logger.warning("INSTAGRAM_COOKIES не встановлено")
-        return
-    path = "/tmp/instagram_cookies.txt"
-    with open(path, "w") as f:
-        f.write(INSTAGRAM_COOKIES_RAW)
-    _COOKIES_FILE = path
-    count = sum(1 for l in INSTAGRAM_COOKIES_RAW.splitlines() if l.strip() and not l.startswith("#"))
-    logger.info(f"Cookies завантажено: {count} шт.")
 
-# ──────────────────────────────────────────
-# МЕТОД 1: yt-dlp
-# ──────────────────────────────────────────
-
-def _download_ytdlp(url: str, output_dir: str) -> str | None:
-    import yt_dlp
-    fmt = (
-        "bestvideo[vcodec!=unknown]+bestaudio[ext=m4a]/"
-        "bestvideo[vcodec!=unknown]+bestaudio/"
-        "best[acodec!=none]/"
-        "best"
-    )
-    
-    ydl_opts = {
-       "format_sort_force": True,
-        "format_sort": ["+acodec", "vcodec:vp9", "vcodec:avc"],
-        "ignore_no_formats_error": False,
-        "outtmpl": os.path.join(output_dir, "video.%(ext)s"),
-        "format": fmt,
-        "merge_output_format": "mp4",
-        #"verbose": True,
-        "quiet": True,
-        "no_warnings": True,
-        "noprogress": True,
-        "socket_timeout": 30,
-        "retries": 3,
-        "fragment_retries": 3,
-        # Паралельне завантаження фрагментів DASH — швидше для Instagram/Facebook
-        "concurrent_fragment_downloads": 4,
-        # Якщо швидкість впала нижче 50 KB/s — вважаємо throttling і повторюємо
-        "throttledratelimit": 50000,
-        "prefer_ffmpeg": True,
-        "http_headers": {
-            "User-Agent": (
-                "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
-                "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 "
-                "Mobile/15E148 Safari/604.1"
-            ),
-        },
-        "postprocessors": [{"key": "FFmpegVideoConvertor", "preferedformat": "mp4"}],
-        "postprocessor_args": {
-            # -movflags +faststart: метадані на початок файлу → миттєвий стрімінг
-            "ffmpegmerger": ["-movflags", "+faststart"],
-            "ffmpegvideoconvertor": ["-movflags", "+faststart"],
-        },
-    }
-    if _COOKIES_FILE:
-        ydl_opts["cookiefile"] = _COOKIES_FILE
+def _load() -> dict:
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-            if not info:
-                return None
-            for f in Path(output_dir).glob("video.*"):
-                if f.stat().st_size > 0:
-                    logger.info(f"yt-dlp OK: {f.name} | {f.stat().st_size/1024/1024:.1f}MB | codec={info.get('vcodec','?')}")
-                    return str(f)
-            return None
-    except yt_dlp.utils.DownloadError as e:
-        err = str(e).lower()
-        if "empty media response" in err:
-            logger.warning("yt-dlp: empty media response")
-            return None
-        if "private" in err or "login" in err or "age" in err or "rate-limit" in err:
-            logger.warning(f"yt-dlp: авторизація/ліміт — {str(e)[:120]}")
-        elif "not found" in err or "404" in err:
-            logger.warning(f"yt-dlp: не знайдено — {str(e)[:120]}")
-        elif "no video" in err or "photo" in err:
-            logger.info("yt-dlp: фото пост")
-        elif "can't be seen" in err or "isn't available" in err or "certain audiences" in err:
-            logger.warning("yt-dlp: контент обмежено (18+/гео)")
-        elif "requested format is not available" in err:
-            logger.warning("yt-dlp: формат недоступний — відео без аудіо з цього IP")
+        if REDIS_URL:
+            st = json.loads(_redis("GET", REDIS_KEY) or "{}")
         else:
-            logger.error(f"yt-dlp: {str(e)[:200]}")
-        return None
-    except Exception as e:
-        logger.error(f"yt-dlp Exception: {e}", exc_info=True)
-        return None
-
-# ──────────────────────────────────────────
-# DISPATCH
-# ──────────────────────────────────────────
-def download_media(url: str, output_dir: str, platform: str) -> str | None:
-    logger.info(f"yt-dlp: {'cookies активні' if _COOKIES_FILE else 'без cookies'} | {platform} | {url}")
-    return _download_ytdlp(url, output_dir)
-
-# ──────────────────────────────────────────
-# HELPERS
-# ──────────────────────────────────────────
-_throttle_until: dict[str, float] = {}
-_throttle_skipped: dict[str, int] = {}
-_bg: set[asyncio.Task] = set()
+            with open(STATE_PATH, encoding="utf-8") as f:
+                st = json.load(f)
+    except FileNotFoundError:
+        st = {}
+    except (OSError, ValueError, httpx.HTTPError) as e:
+        logger.error(f"Не вдалося прочитати стан, починаю з нуля: {e}")
+        st = {}
+    return {
+        "users": set(st.get("users", [])),
+        "schedules": st.get("schedules", {}),  # {"2026-11-04": {"4.2": [[с, к], ...]}}
+        "alerts": st.get("alerts", {}),        # {ключ_події: абс_хвилина}
+    }
 
 
-def throttled(key: str, interval: float = 60.0) -> int | None:
-    """None — подію слід пропустити (недавно вже була); інакше — скільки однакових подій пропущено досі."""
-    now = time.monotonic()
-    if len(_throttle_until) > 200:  # не даємо словнику рости
-        for k in [k for k, t in _throttle_until.items() if t < now]:
-            del _throttle_until[k]
-    if now < _throttle_until.get(key, 0):
-        _throttle_skipped[key] = _throttle_skipped.get(key, 0) + 1
-        return None
-    _throttle_until[key] = now + interval
-    return _throttle_skipped.pop(key, 0)
-
-
-def _more(n: int) -> str:
-    return f" (+{n} подібних)" if n else ""
-
-
-async def _reply_temp(message, text: str, ttl: float = 5) -> None:
-    """Коротка службова відповідь, що сама зникає (хендлер не чекає)."""
+def _write(data: str) -> None:
     try:
-        notice = await message.reply_text(text, reply_to_message_id=message.message_id)
-    except Exception as e:
-        logger.warning(f"Не вдалося надіслати службову відповідь: {e}")
-        return
+        if REDIS_URL:
+            _redis("SET", REDIS_KEY, data)
+        else:
+            with open(STATE_PATH + ".tmp", "w", encoding="utf-8") as f:
+                f.write(data)
+            os.replace(STATE_PATH + ".tmp", STATE_PATH)
+    except (OSError, httpx.HTTPError) as e:
+        logger.error(f"Не вдалося зберегти стан: {e}")
 
-    async def _drop() -> None:
-        await asyncio.sleep(ttl)
+
+def _save() -> None:
+    _writer.submit(_write, json.dumps({**state, "users": sorted(state["users"])}, ensure_ascii=False))
+
+
+state = _load()
+
+
+# ──────────────────────────────────────────
+# ВІДПРАВКА
+# ──────────────────────────────────────────
+def _markup(private: bool) -> InlineKeyboardMarkup | None:
+    """Кнопка «Відкрити графік»: у приваті — міні-застосунок, у групах (web_app заборонено) — посилання."""
+    if not PAGE_URL:
+        return None
+    label = "📊 Відкрити графік"
+    btn = (InlineKeyboardButton(label, web_app=WebAppInfo(url=PAGE_URL)) if private
+           else InlineKeyboardButton(label, url=MINIAPP_URL or PAGE_URL))
+    return InlineKeyboardMarkup([[btn]])
+
+
+async def send(bot: Bot, chat_id: int, text: str, button: bool = False) -> bool:
+    for _ in range(3):
         try:
-            await notice.delete()
-        except Exception:
-            pass
+            await bot.send_message(chat_id, text, reply_markup=_markup(chat_id > 0) if button else None)
+            return True
+        except RetryAfter as e:
+            ra = e.retry_after
+            await asyncio.sleep((ra.total_seconds() if hasattr(ra, "total_seconds") else ra) + 1)
+        except (Forbidden, BadRequest):  # бота заблокували / чат видалено
+            if chat_id in state["users"]:
+                state["users"].discard(chat_id)
+                _save()
+                logger.info(f"Підписник {chat_id} недоступний — відписано")
+            return False
+        except NetworkError as e:
+            logger.warning(f"Помилка відправки в {chat_id}: {e}")
+            await asyncio.sleep(2)
+    return False
 
-    task = asyncio.create_task(_drop())
-    _bg.add(task)
-    task.add_done_callback(_bg.discard)
 
+async def broadcast(bot: Bot, text: str, button: bool = False) -> None:
+    sem = asyncio.Semaphore(10)  # ліміт Telegram ≈ 30 повідомлень/с
 
-def _probe(path: str) -> tuple[int | None, int | None, int | None, bool]:
-    """(ширина, висота, тривалість с, є_аудіо) через ffprobe; за збою — порожні значення."""
-    def run(*args: str) -> dict:
-        r = subprocess.run(["ffprobe", "-v", "error", *args, "-of", "json", path],
-                           capture_output=True, text=True, timeout=10)
-        if r.returncode:
-            raise RuntimeError(r.stderr.strip()[:100])
-        return json.loads(r.stdout or "{}")
-    try:
-        v = run("-select_streams", "v:0", "-show_entries", "stream=width,height:format=duration")
-        st = (v.get("streams") or [{}])[0]
-        dur = v.get("format", {}).get("duration")
-        a = run("-select_streams", "a:0", "-show_entries", "stream=codec_name")
-        return st.get("width"), st.get("height"), int(float(dur)) if dur else None, bool(a.get("streams"))
-    except Exception as e:
-        logger.debug(f"ffprobe недоступний: {e}")
-        return None, None, None, True  # не заважаємо відправці
+    async def one(chat_id: int) -> None:
+        async with sem:
+            await send(bot, chat_id, text, button)
 
-# ──────────────────────────────────────────
-# RATE LIMIT
-# ──────────────────────────────────────────
-def check_rate_limit(user_id: int) -> tuple[bool, int]:
-    now = time.time()
-    cooldown = user_cooldowns.get(user_id, 0)
-    if now < cooldown:
-        return False, int((cooldown - now) / 60) + 1
-    user_cooldowns.pop(user_id, None)
-    ts = user_timestamps.setdefault(user_id, deque())
-    while ts and ts[0] < now - REQUEST_WINDOW:
-        ts.popleft()
-    if len(ts) >= REQUEST_LIMIT:
-        user_cooldowns[user_id] = now + COOLDOWN_TIME
-        return False, COOLDOWN_TIME // 60
-    ts.append(now)
-    if len(user_timestamps) > 500:  # прибираємо неактивних
-        for uid in [u for u, d in user_timestamps.items() if d[-1] < now - REQUEST_WINDOW]:
-            del user_timestamps[uid]
-    return True, 0
+    await asyncio.gather(*(one(c) for c in list(state["users"])))
+
 
 # ──────────────────────────────────────────
-# TYPING
+# ЛОГІКА: зміни графіка та нагадування
 # ──────────────────────────────────────────
-async def keep_uploading_action(chat_id: int, bot) -> None:
-    try:
+async def check_changes(bot: Bot, current: graph.Schedule, today: date, now_min: int) -> None:
+    sch = state["schedules"]
+    for k in [k for k in sch if k < today.isoformat()]:  # прибираємо минулі дні
+        del sch[k]
+    dirty = False
+    for d, qs in sorted(current.items()):
+        qs = {q: iv for q, iv in qs.items() if q in graph.QUEUES}
+        if d < today or not qs:
+            continue
+        key = d.isoformat()
+        old = sch.get(key)
+        msg = None
+        if old is None:
+            shown = {q: graph.upcoming(iv, d, today, now_min) for q, iv in qs.items()}
+            if any(shown.values()):  # якщо весь графік уже в минулому — просто запам'ятовуємо
+                msg = graph.fmt_day(d, shown)
+        else:
+            diff = [q for q in graph.QUEUES if q in qs
+                    and graph.future(old.get(q), d, today, now_min) != graph.future(qs[q], d, today, now_min)]
+            if diff:
+                msg = graph.fmt_changed(d, old, {**old, **qs}, diff, today, now_min)
+        if msg:
+            await broadcast(bot, msg, button=True)
+            logger.info(f"Сповіщення про графік на {key} надіслано")
+        merged = {**(old or {}), **qs}
+        if merged != old:
+            sch[key] = merged
+            dirty = True
+    if dirty:
+        _save()
+
+
+async def send_alerts(bot: Bot, today: date, now_min: int) -> None:
+    sent = state["alerts"]
+    horizon = today.toordinal() * 1440 + now_min - 1440
+    dirty = False
+    for k in [k for k, stamp in sent.items() if stamp < horizon]:
+        del sent[k]
+        dirty = True
+    for key, stamp, text in graph.alert_events(state["schedules"], today, now_min, LEAD_MIN):
+        if key not in sent:
+            sent[key] = stamp  # позначаємо до розсилки: краще пропустити, ніж надіслати двічі
+            dirty = True
+            await broadcast(bot, text)
+    if dirty:
+        _save()
+
+
+def current_text() -> str:
+    today, now_min = graph.now()
+    parts = []
+    for k, qs in sorted(state["schedules"].items()):
+        d = date.fromisoformat(k)
+        if d >= today:
+            shown = {q: graph.upcoming(qs[q], d, today, now_min) for q in graph.QUEUES if q in qs}
+            if shown:
+                parts.append(graph.fmt_day(d, shown, "📋 Поточний графік на"))
+    return "\n\n".join(parts) or "Графіка ще немає — спробуйте за хвилину."
+
+
+# ──────────────────────────────────────────
+# МОНІТОРИНГ
+# ──────────────────────────────────────────
+def _publish(current: graph.Schedule, times: graph.Times, checked_at: float | None) -> None:
+    _api["data"] = graph.build_api(current, times, graph.now()[0], checked_at, POLL_INTERVAL)
+
+
+async def monitor(bot: Bot) -> None:
+    _publish({date.fromisoformat(k): v for k, v in state["schedules"].items()}, {}, None)
+    last = None
+    fails, fail_since, alerted = 0, None, False
+    logger.info(f"Моніторинг: {graph.SOURCE} | черги={graph.QUEUES} | підписників={len(state['users'])}")
+
+    async with httpx.AsyncClient(headers=graph.HEADERS, timeout=15, follow_redirects=True) as client:
         while True:
-            await bot.send_chat_action(chat_id=chat_id, action="upload_video")
-            await asyncio.sleep(4)
-    except asyncio.CancelledError:
-        pass
-    except Exception:  # індикатор не критичний (напр. бота вилучили з чату)
-        pass
-
-# ──────────────────────────────────────────
-# HANDLER
-# ──────────────────────────────────────────
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    message = update.message
-    if not message or not message.text or not message.from_user:
-        return
-    if time.time() - message.date.timestamp() > 30:
-        return
-
-    url_info = extract_url(message.text)
-    if not url_info:
-        return
-    media_url, platform = url_info
-
-    user_id = message.from_user.id
-    allowed, cooldown_mins = check_rate_limit(user_id)
-    if not allowed:
-        await _reply_temp(message, f"Забагато запитів. Спробуйте через {cooldown_mins} хв.", ttl=10)
-        return
-
-    dedup_key = f"{media_url}:{message.chat_id}"
-    if dedup_key in _processing:
-        return
-    _processing.add(dedup_key)
-
-    logger.info(f"[{platform.upper()}] user={user_id} | {media_url}")
-    typing_task = asyncio.create_task(keep_uploading_action(message.chat_id, context.bot))
-    try:
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            loop = asyncio.get_running_loop()
-            media_path = await loop.run_in_executor(None, download_media, media_url, tmp_dir, platform)
-            if not media_path or not Path(media_path).exists():
-                await _reply_temp(message, "Не вдалося завантажити: контент приватний, видалений або недоступний.")
-                return
-
-            size_mb = Path(media_path).stat().st_size / 1024 / 1024
-            if size_mb > 50:
-                await _reply_temp(message, f"Файл завеликий ({size_mb:.0f} МБ): Telegram приймає до 50 МБ.")
-                return
-
-            width, height, duration, has_audio = await loop.run_in_executor(None, _probe, media_path)
-            if not has_audio:
-                logger.warning("Відео без аудіопотоку — можливо, Meta заблокувала трек")
-
-            sent = False
-            for attempt in range(3):
-                try:
-                    with open(media_path, "rb") as f:
-                        sent_msg = await context.bot.send_video(
-                            chat_id=message.chat_id,
-                            video=f,
-                            supports_streaming=True,
-                            width=width,
-                            height=height,
-                            duration=duration,
-                            write_timeout=120,
-                            read_timeout=60,
-                            connect_timeout=30,
-                        )
-                    _sent_messages[message.chat_id].append(sent_msg.message_id)
-                    logger.info(f"Sent {size_mb:.1f}MB (attempt {attempt+1})")
-                    sent = True
-                    break
-                except Exception as e:
-                    logger.warning(f"Send attempt {attempt+1} failed: {e}")
-                    if attempt < 2:
-                        await asyncio.sleep(3)
-
-            if sent:
-                try:
-                    await message.delete()
-                except Exception:
-                    pass
+            delay = POLL_INTERVAL * random.uniform(0.8, 1.2)
+            current = None
+            try:
+                current, times = await graph.fetch(client)
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                fails += 1
+                fail_since = fail_since or time.time()
+                _status["last_error"] = f"{type(e).__name__}: {e}"
+                delay = (max(e.retry_after, 60) if isinstance(e, graph.RateLimited)
+                         else min(POLL_INTERVAL * 2 ** min(fails, 6), 120))
+                logger.warning(f"Помилка опитування ({fails}): {e}")
             else:
-                await _reply_temp(message, "Не вдалося надіслати відео. Спробуйте пізніше.")
-    except Exception as e:  # непередбачена помилка саме цього запиту
-        sig = f"{type(e).__name__}: {str(e)[:80]}"
-        skipped = throttled("req:" + sig)
-        if skipped is not None:
-            logger.error(f"[{platform.upper()}] {media_url} — {sig}{_more(skipped)}", exc_info=True)
-        await _reply_temp(message, "Не вдалося обробити посилання. Спробуйте пізніше.")
-    finally:
-        typing_task.cancel()
-        _processing.discard(dedup_key)
+                _publish(current, times, time.time())
+                _status["last_ok"] = time.time()
+                if fails:
+                    logger.info(f"Джерело знову доступне після {fails} помилок")
+                if alerted and ADMIN_USER_ID:
+                    await send(bot, ADMIN_USER_ID, "✅ Джерело графіків знову доступне.")
+                fails, fail_since, alerted = 0, None, False
 
-# ──────────────────────────────────────────
-# ADMIN
-# ──────────────────────────────────────────
-async def cmd_clean(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    msg = update.message
-    if not msg or not update.effective_user:
-        return
-    if update.effective_user.id != ADMIN_USER_ID:
-        await msg.reply_text("Немає доступу.")
-        return
-    args = context.args or []
-    count_arg = args[0] if args else "5"
-    try:
-        chat_id_arg = int(args[1]) if len(args) > 1 else None
-    except ValueError:
-        await msg.reply_text("Невірний chat_id. Формат: /clean [N|all] [chat_id]")
-        return
-    target_chat = chat_id_arg or (next(iter(_sent_messages)) if _sent_messages else None)
-    if not target_chat:
-        await msg.reply_text("Немає збережених повідомлень.")
-        return
-    msgs = _sent_messages.get(target_chat)
-    if not msgs:
-        await msg.reply_text(f"Немає повідомлень для чату {target_chat}.")
-        return
-    all_msgs = list(msgs)
-    to_delete = all_msgs if count_arg.lower() == "all" else all_msgs[-(int(count_arg) if count_arg.isdigit() else 5):]
-    deleted = failed = 0
-    for msg_id in reversed(to_delete):
+            try:  # нагадування працюють і тоді, коли джерело тимчасово недоступне
+                today, now_min = graph.now()
+                if current is not None and current != last:
+                    await check_changes(bot, current, today, now_min)
+                    last = current
+                await send_alerts(bot, today, now_min)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("Помилка обробки графіка")
+
+            if fail_since and not alerted and ADMIN_USER_ID and time.time() - fail_since >= OUTAGE_ALERT_SEC:
+                alerted = await send(
+                    bot, ADMIN_USER_ID,
+                    f"⚠️ Не вдається отримати графік ({graph.SOURCE}) понад {OUTAGE_ALERT_SEC // 60} хв.\n"
+                    f"{_status['last_error']}",
+                )
+            await asyncio.sleep(delay)
+
+
+async def supervise(bot: Bot) -> None:
+    while True:
         try:
-            await context.bot.delete_message(chat_id=target_chat, message_id=msg_id)
-            if msg_id in msgs:
-                msgs.remove(msg_id)
-            deleted += 1
-            await asyncio.sleep(0.3)
-        except Exception as e:
-            logger.warning(f"Cannot delete {msg_id}: {e}")
-            failed += 1
-    await msg.reply_text(f"Видалено: {deleted} | Не вдалось: {failed}")
-
-
-async def cmd_chats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not update.message or not update.effective_user or update.effective_user.id != ADMIN_USER_ID:
-        return
-    if not _sent_messages:
-        await update.message.reply_text("Немає збережених повідомлень.")
-        return
-    lines = ["Чати:"] + [f"  {cid}: {len(m)} шт." for cid, m in _sent_messages.items()]
-    lines.append("\n/clean [N|all] [chat_id]")
-    await update.message.reply_text("\n".join(lines))
-
-# ──────────────────────────────────────────
-# ERRORS
-# ──────────────────────────────────────────
-async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Єдина точка для необроблених помилок: лог без спаму + рідкісне сповіщення адміну.
-    Користувачу тут нічого не пишемо — відповіді на його запити формує сам хендлер."""
-    err = context.error
-    sig = f"{type(err).__name__}: {str(err)[:80]}"
-    skipped = throttled("log:" + sig)
-    if isinstance(err, (BadRequest, Forbidden)):  # напр. повідомлення вже видалено / немає прав
-        if skipped is not None:
-            logger.warning(f"Telegram API — {sig}{_more(skipped)}")
-        return
-    if isinstance(err, NetworkError):  # тимчасові збої мережі (TimedOut тощо)
-        if skipped is not None:
-            logger.warning(f"Мережа — {sig}{_more(skipped)}")
-        return
-    if skipped is not None:
-        logger.error(f"Необроблена помилка — {sig}{_more(skipped)}", exc_info=err)
-    if ADMIN_USER_ID and throttled("adm:" + sig, 600) is not None:  # адміну — раз на 10 хв для однакової помилки
-        try:
-            await context.bot.send_message(ADMIN_USER_ID, f"⚠️ Помилка бота: {sig}")
+            await monitor(bot)
+        except asyncio.CancelledError:
+            raise
         except Exception:
-            pass
+            logger.exception("Моніторинг впав, перезапуск через 10с")
+            await asyncio.sleep(10)
+
 
 # ──────────────────────────────────────────
-# APP FACTORY
+# КОМАНДИ
+# ──────────────────────────────────────────
+async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    chat = update.effective_chat
+    if not chat:
+        return
+    if chat.id not in state["users"]:
+        state["users"].add(chat.id)
+        _save()
+    await context.bot.send_message(
+        chat.id,
+        f"✅ Підписано. Надсилатиму графік для черги {', '.join(graph.QUEUES)}, зміни в ньому "
+        f"та нагадування за {LEAD_MIN} хв до вимкнення й ввімкнення.\n\n"
+        "/graph — поточний графік\n/web — графік на сторінці\n/stop — відписатися",
+    )
+    await context.bot.send_message(chat.id, current_text(), reply_markup=_markup(chat.id > 0))
+
+
+async def cmd_stop(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    chat = update.effective_chat
+    if chat:
+        state["users"].discard(chat.id)
+        _save()
+        await context.bot.send_message(chat.id, "Відписано. Щоб підписатися знову — /start.")
+
+
+async def cmd_graph(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if chat := update.effective_chat:
+        await context.bot.send_message(chat.id, current_text(), reply_markup=_markup(chat.id > 0))
+
+
+async def cmd_web(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if chat := update.effective_chat:
+        markup = _markup(chat.id > 0)
+        await context.bot.send_message(chat.id, "⚡ Графік відключень" if markup else "Сторінку не налаштовано.",
+                                       reply_markup=markup)
+
+
+async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    err = context.error
+    if isinstance(err, (NetworkError, Forbidden)):  # BadRequest входить у NetworkError
+        logger.warning(f"Telegram: {type(err).__name__}: {err}")
+    else:
+        logger.error("Необроблена помилка", exc_info=err)
+
+
+# ──────────────────────────────────────────
+# ЗАПУСК
 # ──────────────────────────────────────────
 def create_application() -> Application:
     if not BOT_TOKEN:
         raise ValueError("BOT_TOKEN не встановлено!")
-    _init_cookies()
     app = Application.builder().token(BOT_TOKEN).build()
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    app.add_handler(CommandHandler("clean", cmd_clean))
-    app.add_handler(CommandHandler("chats", cmd_chats))
+    for name, fn in (("start", cmd_start), ("stop", cmd_stop), ("graph", cmd_graph), ("web", cmd_web)):
+        app.add_handler(CommandHandler(name, fn))
     app.add_error_handler(on_error)
-    logger.info("Бот запущено | yt-dlp (Instagram, Facebook Reels)")
-    logger.info(f"Cookies: {'OK' if _COOKIES_FILE else 'НЕ ВСТАНОВЛЕНО'}")
-    logger.info(f"Admin: {ADMIN_USER_ID or 'не встановлено'}")
     return app
+
+
+async def startup(app: Application) -> None:
+    await app.initialize()
+    await app.start()
+    await app.bot.set_my_commands([
+        BotCommand("graph", "Поточний графік"), BotCommand("web", "Графік на сторінці"),
+        BotCommand("stop", "Відписатися"),
+    ])
+    if WEBHOOK_URL:
+        await app.bot.set_webhook(f"{WEBHOOK_URL}/{BOT_TOKEN}", allowed_updates=["message"])
+    else:
+        logger.warning("WEBHOOK_URL не задано — вебхук не встановлено")
+    task = asyncio.create_task(supervise(app.bot))
+    _tasks.add(task)
+    task.add_done_callback(_tasks.discard)
+
+
+def api_data() -> dict:
+    out = dict(_api["data"] or {})
+    out["ready"] = bool(out.get("days"))
+    out["serverTime"] = int(time.time() * 1000)
+    return out
+
+
+def status() -> dict:
+    ok = _status["last_ok"]
+    return {
+        "source": graph.SOURCE,
+        "queues": graph.QUEUES,
+        "users": len(state["users"]),
+        "last_ok_sec_ago": round(time.time() - ok) if ok else None,
+        "last_error": _status["last_error"],
+    }
