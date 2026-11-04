@@ -19,13 +19,11 @@ logger = logging.getLogger("bot")
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "").rstrip("/")
-ADMIN_USER_ID = int(os.environ.get("ADMIN_USER_ID") or 0)  # необов'язково: сповіщення, якщо джерело недоступне
 POLL_INTERVAL = max(10.0, float(os.environ.get("POLL_SEC") or 30))
 LEAD_MIN = int(os.environ.get("ALERT_LEAD_MIN") or 10)
 STATE_PATH = os.environ.get("STATE_PATH", "state.json")
 PAGE_URL = os.environ.get("PAGE_URL") or (f"{WEBHOOK_URL}/schedule" if WEBHOOK_URL else "")
 MINIAPP_URL = os.environ.get("MINIAPP_URL", "")  # https://t.me/<бот>/<назва> — кнопка в групах
-OUTAGE_ALERT_SEC = 300
 
 _status: dict = {"last_ok": None, "last_error": None}
 _api: dict = {"data": None}
@@ -201,7 +199,7 @@ def _publish(current: graph.Schedule, times: graph.Times, checked_at: float | No
 async def monitor(bot: Bot) -> None:
     _publish({date.fromisoformat(k): v for k, v in state["schedules"].items()}, {}, None)
     last = None
-    fails, fail_since, alerted = 0, None, False
+    fails = 0
     logger.info(f"Моніторинг: {graph.SOURCE} | черги={graph.QUEUES} | підписників={len(state['users'])}")
 
     async with httpx.AsyncClient(headers=graph.HEADERS, timeout=15, follow_redirects=True) as client:
@@ -214,7 +212,6 @@ async def monitor(bot: Bot) -> None:
                 raise
             except Exception as e:
                 fails += 1
-                fail_since = fail_since or time.time()
                 _status["last_error"] = f"{type(e).__name__}: {e}"
                 delay = (max(e.retry_after, 60) if isinstance(e, graph.RateLimited)
                          else min(POLL_INTERVAL * 2 ** min(fails, 6), 120))
@@ -224,9 +221,7 @@ async def monitor(bot: Bot) -> None:
                 _status["last_ok"] = time.time()
                 if fails:
                     logger.info(f"Джерело знову доступне після {fails} помилок")
-                if alerted and ADMIN_USER_ID:
-                    await send(bot, ADMIN_USER_ID, "✅ Джерело графіків знову доступне.")
-                fails, fail_since, alerted = 0, None, False
+                fails = 0
 
             try:  # нагадування працюють і тоді, коли джерело тимчасово недоступне
                 today, now_min = graph.now()
@@ -239,12 +234,6 @@ async def monitor(bot: Bot) -> None:
             except Exception:
                 logger.exception("Помилка обробки графіка")
 
-            if fail_since and not alerted and ADMIN_USER_ID and time.time() - fail_since >= OUTAGE_ALERT_SEC:
-                alerted = await send(
-                    bot, ADMIN_USER_ID,
-                    f"⚠️ Не вдається отримати графік ({graph.SOURCE}) понад {OUTAGE_ALERT_SEC // 60} хв.\n"
-                    f"{_status['last_error']}",
-                )
             await asyncio.sleep(delay)
 
 
