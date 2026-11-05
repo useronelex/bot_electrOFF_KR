@@ -50,6 +50,7 @@
 html.bg-pause .bg i,html.bg-pause .glow{animation-play-state:paused}
 @media(prefers-reduced-motion: reduce){.bg i{animation:none}}
 </style>
+<style>.notice{margin:8px 0;padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.35;background:rgba(245,158,11,.15);color:#92400e}:root[data-theme="dark"] .notice{color:#fbbf24}</style>
 </head>
 <body>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -59,7 +60,7 @@ html.bg-pause .bg i,html.bg-pause .glow{animation-play-state:paused}
   <header>
     <div class="brand">
       <span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z"/></svg></span>
-      <div><h1>Графіки відключень</h1><small class="eyebrow"><i class="eb-dot"></i><span>Черкасиобленерго · <span id="date"></span></span></small></div>
+      <div><h1>Графіки відключень</h1><small class="eyebrow"><i class="eb-dot"></i><span>Дніпровські електромережі · <span id="date"></span></span></small></div>
     </div>
     <button class="tb" id="tb" aria-label="Темна тема">
       <svg class="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
@@ -70,6 +71,7 @@ html.bg-pause .bg i,html.bg-pause .glow{animation-play-state:paused}
     <div class="live" id="live"><span class="dot"></span><span id="livet">завантаження…</span></div>
     <div class="seg" id="seg" role="group" aria-label="День"><span class="thumb"></span><button data-v="today" class="sel">Сьогодні</button><button data-v="tomorrow">Завтра</button></div>
   </div>
+  <div class="notice" id="notice" hidden></div>
   <div class="chead"><span>Черги</span><span id="cnt"></span></div>
   <div class="chips" id="chips" role="group" aria-label="Черги"></div>
   <div class="wrap" id="wrap"><svg viewBox="-30 -30 360 360" id="svg" role="img" aria-label="Добовий годинник відключень"></svg><div class="center" id="center"><div class="tc"><small>Зараз</small><b id="now">--:--:--</b></div><div class="lab" id="lab"></div><div class="cd" id="cd"></div><div class="cl" id="cl"></div></div></div>
@@ -201,7 +203,7 @@ function upd(){
   if(!api){$("upd").textContent="";return}
   if(!sel.length){$("upd").textContent=enabled(QS[0])||api.queues.length?"":"Бот ще не отримав графіків.";return}
   var m=0,vk=viewKey();sel.forEach(function(q){var r=dayRec(q,vk);if(r&&r.updatedAt)m=Math.max(m,r.updatedAt)});
-  $("upd").textContent=m?"Останній графік у каналі опубліковано о "+hhmm(m):"";
+  $("upd").textContent=m?"Графік оновлено о "+hhmm(m):"";
 }
 function subText(q,vk){
   var sl=daySlots(q,vk),r=dayRec(q,vk),txt;
@@ -260,6 +262,7 @@ function applyApi(j){
     if(!first&&sigs[q+"|"+k]!==sg&&k===keyOf())changed.push(q);
   })});
   sigs=ns;api=j;fetchedAt=Date.now();failed=false;lastKey=keyOf();
+  var nb=$("notice");nb.textContent=j.notice||"";nb.hidden=!j.notice;
   var en=QS.filter(enabled),trim=false;measureCap();
   if(first){
     sel=saved.filter(function(q){return en.indexOf(q)>-1}).slice(0,CAP);
