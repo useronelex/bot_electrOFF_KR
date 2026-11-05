@@ -291,32 +291,6 @@ def fmt_changed(d: date, old: dict, new: dict, diff: list[str], today: date, now
 
 
 # ──────────────────────────────────────────
-# СПОВІЩЕННЯ ЗА N ХВИЛИН ДО ВИМКНЕННЯ / ВВІМКНЕННЯ
-# ──────────────────────────────────────────
-def alert_events(schedules: dict, today: date, now_min: int, lead: int) -> list[tuple[str, int, str]]:
-    """[(унікальний_ключ, абс_хвилина, текст)] для подій, що настануть протягом `lead` хв.
-    Сьогоднішній і завтрашній графіки зшиваються: 22:00–24:00 + 00:00–02:00 — одне відключення."""
-    base = today.toordinal() * 1440
-    out = []
-    for q in QUEUES:
-        pairs = []
-        for off in (0, 1):
-            day = schedules.get((today + timedelta(days=off)).isoformat(), {})
-            pairs += [[s + off * 1440, e + off * 1440] for s, e in day.get(q) or []]
-        for s, e in normalize(pairs):
-            for kind, t in (("off", s), ("on", e)):
-                left = t - now_min
-                if not 0 < left <= lead:
-                    continue
-                if kind == "off":
-                    text = f"🔴 Через {left} хв вимкнення світла о {_t(t)}\nЧерга {q}: {_t(s)}–{_t(e)}"
-                else:
-                    text = f"🟢 Через {left} хв ввімкнення світла о {_t(t)}\nЧерга {q}"
-                out.append((f"{q}|{kind}|{base + t}", base + t, text))
-    return out
-
-
-# ──────────────────────────────────────────
 # ДАНІ ДЛЯ ВЕБ-СТОРІНКИ (/api/schedule)
 # ──────────────────────────────────────────
 def _ms(ts: float | None) -> int | None:
