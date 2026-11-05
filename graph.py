@@ -10,6 +10,8 @@ import httpx
 from bs4 import BeautifulSoup
 
 logger = logging.getLogger("graph")
+_QUEUE = re.compile(r"\d\.\d")
+_last_status: str | None = None
 KYIV = ZoneInfo("Europe/Kyiv")
 QUEUES = tuple(q.strip() for q in os.environ.get("QUEUES", "4.2").split(",") if q.strip())
 SOURCE = os.environ.get("SOURCE", "yasno")  # yasno | dtek | telegram
@@ -24,7 +26,8 @@ HEADERS = {
     "Cache-Control": "no-cache",
 }
 
-notice: str | None = None  # примітка від джерела (напр. YASNO не публікує плановий графік)
+notice: str | None = None  # примітка для користувачів; скидається при кожному опитуванні
+EMERGENCY_NOTICE = "⚠️ YASNO повідомляє про аварійні відключення — плановий графік може не діяти."
 Schedule = dict[date, dict[str, list[list[int]]]]
 Times = dict[date, dict[str, float | None]]
 
@@ -56,33 +59,31 @@ def normalize(pairs: list[list[int]]) -> list[list[int]]:
 # ДЖЕРЕЛО 1: YASNO API (дані ДТЕК Дніпровських електромереж, без захисту від ботів)
 # ──────────────────────────────────────────
 def parse_yasno(data: dict) -> tuple[Schedule, Times]:
+    global notice, _last_status
+    if not any(isinstance(data.get(q), dict) for q in QUEUES):
+        raise RuntimeError(f"YASNO: у відповіді немає черг {QUEUES}, ключі: {list(data)[:8]}")
     current: Schedule = {}
     times: Times = {}
-    seen = {}
-    for q in QUEUES:
-        info = data.get(q)
-        if not isinstance(info, dict):
+    for q, info in data.items():
+        if not _QUEUE.fullmatch(q) or not isinstance(info, dict):
             continue
-        seen[q] = {k: (info[k].get("status") if isinstance(info.get(k), dict) else None) for k in ("today", "tomorrow")}
         try:
             updated = datetime.fromisoformat(info["updatedOn"]).timestamp()
         except (KeyError, ValueError):
             updated = None
         for day in (info.get("today"), info.get("tomorrow")):
-            # інші статуси (WaitingForSchedule, EmergencyShutdowns...) — графіка на цю добу немає
+            # інші статуси (WaitingForSchedule, EmergencyShutdowns...) — планового графіка на цю добу немає
             if not day or day.get("status") not in ("ScheduleApplies", "NoOutages"):
                 continue
             d = datetime.fromisoformat(day["date"]).date()
             pairs = [[x["start"], x["end"]] for x in day.get("slots", []) if x.get("type") == "Definite"]
             current.setdefault(d, {})[q] = normalize(pairs)
             times.setdefault(d, {})[q] = updated
-    if not seen:
-        raise RuntimeError(f"YASNO: у відповіді немає черг {QUEUES}, ключі: {list(data)[:8]}")
-    if not current:  # напр. EmergencyShutdowns: планового графіка немає — це не помилка
-        global notice
-        status = next(iter(seen.values())).get("today")
-        notice = f"ℹ️ YASNO зараз не публікує плановий графік (статус: {status}). Показано останній відомий."
-        logger.info(f"YASNO: планового графіка немає, статуси: {seen}")
+    status = ((data.get(QUEUES[0]) or {}).get("today") or {}).get("status")
+    notice = EMERGENCY_NOTICE if status == "EmergencyShutdowns" else None
+    if status != _last_status:  # журнал змін статусу — щоб оцінити, наскільки він відповідає реальності
+        logger.info(f"YASNO: статус сьогодні {_last_status} → {status}")
+        _last_status = status
     return current, times
 
 
@@ -117,7 +118,7 @@ def parse_dtek(html: str) -> tuple[Schedule, Times]:
         d = datetime.fromtimestamp(int(ts), KYIV).date()
         for name, hours in groups.items():
             q = name.removeprefix("GPV")
-            if q not in QUEUES:
+            if not _QUEUE.fullmatch(q):
                 continue
             pairs = []
             for h, status in hours.items():
@@ -127,7 +128,7 @@ def parse_dtek(html: str) -> tuple[Schedule, Times]:
             current.setdefault(d, {})[q] = normalize(pairs)
             times.setdefault(d, {})[q] = updated
     if not current:
-        raise RuntimeError(f"ДТЕК: у даних немає черг {QUEUES}")
+        raise RuntimeError("ДТЕК: у даних немає черг")
     return current, times
 
 
@@ -184,7 +185,7 @@ def parse_message(text: str, today: date) -> tuple[date, dict[str, list[list[int
     queues: dict[str, list[list[int]]] = {}
     for line in text.splitlines():
         m = _QUEUE_LINE.match(line)
-        if not m or m.group(1) not in QUEUES:
+        if not m:
             continue
         if ivs := parse_intervals(m.group(2)):
             queues.setdefault(m.group(1), []).extend(ivs)
@@ -210,7 +211,7 @@ async def _fetch_telegram(client: httpx.AsyncClient) -> tuple[Schedule, Times]:
         for q in queues:
             times.setdefault(d, {})[q] = ts
     if not current:
-        raise RuntimeError(f"У каналі {CHANNEL} не знайдено графіків для черг {QUEUES}")
+        raise RuntimeError(f"У каналі {CHANNEL} не знайдено графіків")
     return current, times
 
 
@@ -322,7 +323,8 @@ def _ms(ts: float | None) -> int | None:
     return int(ts * 1000) if ts else None
 
 
-def build_api(current: Schedule, times: Times, today: date, checked_at: float | None, poll: float) -> dict:
+def build_api(current: Schedule, times: Times, today: date, checked_at: float | None, poll: float,
+              note: str | None = None) -> dict:
     days = {
         d.isoformat(): {
             q: {
@@ -336,8 +338,9 @@ def build_api(current: Schedule, times: Times, today: date, checked_at: float | 
     }
     return {
         "today": today.isoformat(),
-        "queues": list(QUEUES),
+        "queues": sorted({q for qs in current.values() for q in qs}),
         "displayQueues": list(QUEUES),
+        "notice": note,
         "days": days,
         "checkedAt": _ms(checked_at),
         "pollSec": poll,
