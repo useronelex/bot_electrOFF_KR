@@ -133,24 +133,25 @@ async def broadcast(bot: Bot, text: str, button: bool = False) -> None:
 # ЛОГІКА: зміни графіка та нагадування
 # ──────────────────────────────────────────
 async def check_changes(bot: Bot, current: graph.Schedule, today: date, now_min: int) -> None:
+    """У стан пишемо всі черги (для сторінки), а сповіщаємо лише про graph.QUEUES."""
     sch = state["schedules"]
     for k in [k for k in sch if k < today.isoformat()]:  # прибираємо минулі дні
         del sch[k]
     dirty = False
     for d, qs in sorted(current.items()):
-        qs = {q: iv for q, iv in qs.items() if q in graph.QUEUES}
         if d < today or not qs:
             continue
         key = d.isoformat()
         old = sch.get(key)
+        notify = {q: iv for q, iv in qs.items() if q in graph.QUEUES}
         msg = None
         if old is None:
-            shown = {q: graph.upcoming(iv, d, today, now_min) for q, iv in qs.items()}
+            shown = {q: graph.upcoming(iv, d, today, now_min) for q, iv in notify.items()}
             if any(shown.values()):  # якщо весь графік уже в минулому — просто запам'ятовуємо
                 msg = graph.fmt_day(d, shown)
         else:
-            diff = [q for q in graph.QUEUES if q in qs
-                    and graph.future(old.get(q), d, today, now_min) != graph.future(qs[q], d, today, now_min)]
+            diff = [q for q in notify
+                    if graph.future(old.get(q), d, today, now_min) != graph.future(notify[q], d, today, now_min)]
             if diff:
                 msg = graph.fmt_changed(d, old, {**old, **qs}, diff, today, now_min)
         if msg:
@@ -199,7 +200,7 @@ def current_text() -> str:
 def _publish(checked_at: float | None) -> None:
     """Для сторінки беремо збережений стан, а не лише останню відповідь джерела."""
     current = {date.fromisoformat(k): v for k, v in state["schedules"].items()}
-    _api["data"] = graph.build_api(current, _times, graph.now()[0], checked_at, POLL_INTERVAL)
+    _api["data"] = graph.build_api(current, _times, graph.now()[0], checked_at, POLL_INTERVAL, graph.notice)
 
 
 async def monitor(bot: Bot) -> None:
