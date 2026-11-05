@@ -1,4 +1,4 @@
-"""Бот графіків відключень: підписка через /start, сповіщення про зміни та за 10 хв до вимкнення/ввімкнення."""
+"""Бот графіків відключень: підписка через /start, сповіщення про нові графіки та їх зміни."""
 import asyncio
 import json
 import logging
@@ -21,7 +21,6 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL", "").rstrip("/")
 ADMIN_USER_ID = int(os.environ.get("ADMIN_USER_ID") or 0)  # необов'язково: особисті сповіщення про збої джерела
 POLL_INTERVAL = max(10.0, float(os.environ.get("POLL_SEC") or 30))
-LEAD_MIN = int(os.environ.get("ALERT_LEAD_MIN") or 10)
 STATE_PATH = os.environ.get("STATE_PATH", "state.json")
 PAGE_URL = os.environ.get("PAGE_URL") or (f"{WEBHOOK_URL}/schedule" if WEBHOOK_URL else "")
 OUTAGE_ALERT_SEC = 300
@@ -34,7 +33,7 @@ _tasks: set[asyncio.Task] = set()
 
 
 # ──────────────────────────────────────────
-# СТАН: підписники, останні відомі графіки, надіслані нагадування
+# СТАН: підписники, останні відомі графіки
 # ──────────────────────────────────────────
 REDIS_URL = os.environ.get("UPSTASH_REDIS_REST_URL", "").rstrip("/")
 REDIS_TOKEN = os.environ.get("UPSTASH_REDIS_REST_TOKEN", "")
@@ -63,7 +62,6 @@ def _load() -> dict:
     return {
         "users": set(st.get("users", [])),
         "schedules": st.get("schedules", {}),  # {"2026-11-04": {"4.2": [[с, к], ...]}}
-        "alerts": st.get("alerts", {}),        # {ключ_події: абс_хвилина}
     }
 
 
@@ -130,7 +128,7 @@ async def broadcast(bot: Bot, text: str, button: bool = False) -> None:
 
 
 # ──────────────────────────────────────────
-# ЛОГІКА: зміни графіка та нагадування
+# ЛОГІКА: нові графіки та зміни
 # ──────────────────────────────────────────
 async def check_changes(bot: Bot, current: graph.Schedule, today: date, now_min: int) -> None:
     """У стан пишемо всі черги (для сторінки), а сповіщаємо лише про graph.QUEUES."""
@@ -161,22 +159,6 @@ async def check_changes(bot: Bot, current: graph.Schedule, today: date, now_min:
         if merged != old:
             sch[key] = merged
             dirty = True
-    if dirty:
-        _save()
-
-
-async def send_alerts(bot: Bot, today: date, now_min: int) -> None:
-    sent = state["alerts"]
-    horizon = today.toordinal() * 1440 + now_min - 1440
-    dirty = False
-    for k in [k for k, stamp in sent.items() if stamp < horizon]:
-        del sent[k]
-        dirty = True
-    for key, stamp, text in graph.alert_events(state["schedules"], today, now_min, LEAD_MIN):
-        if key not in sent:
-            sent[key] = stamp  # позначаємо до розсилки: краще пропустити, ніж надіслати двічі
-            dirty = True
-            await broadcast(bot, text)
     if dirty:
         _save()
 
@@ -234,12 +216,11 @@ async def monitor(bot: Bot) -> None:
                     await send(bot, ADMIN_USER_ID, "✅ Джерело графіків знову доступне.")
                 fails, fail_since, alerted = 0, None, False
 
-            try:  # нагадування працюють і тоді, коли джерело тимчасово недоступне
+            try:
                 today, now_min = graph.now()
                 if current is not None and current != last:
                     await check_changes(bot, current, today, now_min)
                     last = current
-                await send_alerts(bot, today, now_min)
                 _publish(_status["last_ok"])
             except asyncio.CancelledError:
                 raise
@@ -278,8 +259,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         _save()
     await context.bot.send_message(
         chat.id,
-        f"✅ Підписано. Надсилатиму графік для черги {', '.join(graph.QUEUES)}, зміни в ньому "
-        f"та нагадування за {LEAD_MIN} хв до вимкнення й ввімкнення.\n\n"
+        f"✅ Підписано. Надсилатиму графік для черги {', '.join(graph.QUEUES)} та зміни в ньому.\n\n"
         "/graph — поточний графік\n/web — графік на сторінці\n/stop — відписатися",
     )
     await context.bot.send_message(chat.id, current_text(), reply_markup=_markup(chat.id > 0))
