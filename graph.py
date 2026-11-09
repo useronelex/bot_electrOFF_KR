@@ -27,7 +27,7 @@ HEADERS = {
 }
 
 notice: str | None = None  # примітка для користувачів; скидається при кожному опитуванні
-EMERGENCY_NOTICE = "⚠️ YASNO повідомляє про аварійні відключення — плановий графік може не діяти."
+EMERGENCY_NOTICE = "⚠️ YASNO не віддає графік (статус: аварійні відключення). Актуальний графік перевірте на сайті ДТЕК."
 Schedule = dict[date, dict[str, list[list[int]]]]
 Times = dict[date, dict[str, float | None]]
 
